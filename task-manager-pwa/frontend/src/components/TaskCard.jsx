@@ -1,3 +1,5 @@
+import { useState, useRef, useEffect } from 'react';
+
 const PRIORITY_STYLES = {
   Low: 'bg-gray-600/20 text-gray-400 border-gray-600/30',
   Medium: 'bg-yellow-600/20 text-yellow-400 border-yellow-600/30',
@@ -10,9 +12,55 @@ const PRIORITY_DOT = {
   High: 'bg-red-400',
 };
 
-const TaskCard = ({ task, onToggle, onEdit, onDelete }) => {
+const TaskCard = ({ task, onToggle, onEdit, onDelete, onInlineUpdate }) => {
   const priorityStyle = PRIORITY_STYLES[task.priority] || PRIORITY_STYLES.Medium;
   const dotColor = PRIORITY_DOT[task.priority] || PRIORITY_DOT.Medium;
+
+  // Inline edit state
+  const [editingField, setEditingField] = useState(null); // 'name' | 'description' | null
+  const [editValue, setEditValue] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editingField && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editingField]);
+
+  const startEdit = (field) => {
+    setEditingField(field);
+    setEditValue(field === 'name' ? task.name : task.description || '');
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+    setEditValue('');
+  };
+
+  const commitEdit = () => {
+    if (!editingField) return;
+    const trimmed = editValue.trim();
+    // Name cannot be empty
+    if (editingField === 'name' && !trimmed) {
+      cancelEdit();
+      return;
+    }
+    const oldVal = editingField === 'name' ? task.name : task.description || '';
+    if (trimmed !== oldVal && onInlineUpdate) {
+      onInlineUpdate(task._id || task.localId, { [editingField]: trimmed });
+    }
+    cancelEdit();
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return null;
@@ -56,13 +104,27 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete }) => {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3
-              className={`font-semibold text-lg ${
-                task.completed ? 'line-through text-gray-500' : 'text-white'
-              }`}
-            >
-              {task.name}
-            </h3>
+            {editingField === 'name' ? (
+              <input
+                ref={inputRef}
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={handleKeyDown}
+                className="bg-dark-surface border border-primary-500/50 rounded px-2 py-0.5 text-white font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-primary-500/40 w-full max-w-md"
+              />
+            ) : (
+              <h3
+                onClick={() => !task.completed && startEdit('name')}
+                className={`font-semibold text-lg cursor-text ${
+                  task.completed ? 'line-through text-gray-500' : 'text-white hover:text-primary-300'
+                }`}
+                title={task.completed ? '' : 'Click to edit'}
+              >
+                {task.name}
+              </h3>
+            )}
             <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${priorityStyle}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
               {task.priority}
@@ -74,8 +136,31 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete }) => {
             )}
           </div>
 
-          {task.description && (
-            <p className="text-sm text-gray-400 mt-1 line-clamp-2">{task.description}</p>
+          {editingField === 'description' ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              placeholder="Add a description…"
+              className="mt-1 w-full bg-dark-surface border border-primary-500/50 rounded px-2 py-1 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-500/40"
+            />
+          ) : (
+            <p
+              onClick={() => !task.completed && startEdit('description')}
+              className={`text-sm mt-1 line-clamp-2 cursor-text ${
+                task.description
+                  ? 'text-gray-400 hover:text-gray-300'
+                  : task.completed
+                  ? 'hidden'
+                  : 'text-gray-600 italic hover:text-gray-400'
+              }`}
+              title={task.completed ? '' : 'Click to edit'}
+            >
+              {task.description || (task.completed ? '' : 'Add a description…')}
+            </p>
           )}
 
           <div className="flex items-center gap-4 mt-3 text-xs text-gray-500">

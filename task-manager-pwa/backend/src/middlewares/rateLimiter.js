@@ -42,4 +42,18 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-module.exports = { loginLimiter, otpLimiter, apiLimiter };
+/**
+ * Admin API rate limiter (stricter)
+ */
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: {
+    success: false,
+    message: 'Too many admin requests. Please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = { loginLimiter, otpLimiter, apiLimiter, adminLimiter };

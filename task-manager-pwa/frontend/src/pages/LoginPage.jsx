@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const LoginPage = () => {
-  const [step, setStep] = useState('credentials'); // 'credentials' | 'otp'
+  const [step, setStep] = useState('credentials'); // 'credentials' | 'otp' | 'totp'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [otp, setOtp] = useState('');
@@ -17,8 +17,13 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const data = await login({ email, password });
-      toast.success(data.message);
-      setStep('otp');
+      if (data.twoFactorRequired) {
+        toast.success(data.message);
+        setStep('totp');
+      } else {
+        toast.success(data.message);
+        setStep('otp');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');
     } finally {
@@ -48,6 +53,8 @@ const LoginPage = () => {
           <p className="text-gray-400 mb-6">
             {step === 'credentials'
               ? 'Enter your credentials to continue'
+              : step === 'totp'
+              ? 'Enter the code from your authenticator app'
               : 'Enter the 6-digit code sent to your email'}
           </p>
 
@@ -87,7 +94,7 @@ const LoginPage = () => {
             <form onSubmit={handleOtp} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">
-                  Verification Code
+                  {step === 'totp' ? 'Authenticator Code' : 'Verification Code'}
                 </label>
                 <input
                   type="text"
@@ -97,6 +104,7 @@ const LoginPage = () => {
                   maxLength={6}
                   className="w-full px-4 py-2.5 bg-dark-surface border border-dark-border rounded-lg text-white text-center text-2xl tracking-[0.5em] placeholder-gray-500 focus:outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-colors"
                   placeholder="000000"
+                  autoFocus
                 />
               </div>
               <button

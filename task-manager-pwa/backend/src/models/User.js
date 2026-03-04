@@ -22,9 +22,38 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
       select: false,
     },
+    role: {
+      type: String,
+      enum: ['user', 'admin', 'moderator'],
+      default: 'user',
+    },
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    mustChangePassword: {
+      type: Boolean,
+      default: false,
+    },
+    lastLoginAt: {
+      type: Date,
+      default: null,
+    },
+    lastLoginIp: {
+      type: String,
+      default: null,
+    },
+    failedLoginAttempts: {
+      type: Number,
+      default: 0,
+    },
+    lockedUntil: {
+      type: Date,
+      default: null,
     },
     otp: {
       code: { type: String, default: null },
@@ -33,6 +62,21 @@ const userSchema = new mongoose.Schema(
     refreshTokens: {
       type: [String],
       select: false,
+    },
+    twoFactorEnabled: {
+      type: Boolean,
+      default: false,
+    },
+    totpSecret: {
+      type: String,
+      select: false,
+      default: null,
+    },
+    preferences: {
+      theme: { type: String, enum: ['dark', 'light'], default: 'dark' },
+      sidebarCollapsed: { type: Boolean, default: false },
+      defaultPage: { type: String, enum: ['dashboard', 'completed'], default: 'dashboard' },
+      taskView: { type: String, enum: ['compact', 'detailed'], default: 'detailed' },
     },
   },
   {

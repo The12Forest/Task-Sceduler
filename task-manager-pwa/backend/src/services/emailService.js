@@ -55,4 +55,34 @@ const sendOtpEmail = async (email, otp) => {
   });
 };
 
-module.exports = { sendVerificationEmail, sendOtpEmail };
+/**
+ * Send task reminder email
+ */
+const sendReminderEmail = async (email, tasks) => {
+  const taskList = tasks
+    .map(
+      (t) =>
+        `<li style="padding:6px 0;border-bottom:1px solid #2a2a3e;">
+          <strong style="color:#e0e0e0;">${t.name}</strong>
+          ${t.priority ? `<span style="color:#7c3aed;font-size:12px;margin-left:8px;">[${t.priority}]</span>` : ''}
+          ${t.dueDate ? `<br/><span style="font-size:12px;color:#888;">Due: ${new Date(t.dueDate).toLocaleDateString()}</span>` : ''}
+        </li>`
+    )
+    .join('');
+
+  await transporter.sendMail({
+    from: `"Task Manager" <${config.smtp.from}>`,
+    to: email,
+    subject: `🔔 You have ${tasks.length} task${tasks.length > 1 ? 's' : ''} due today`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#1a1a2e;color:#e0e0e0;border-radius:12px;">
+        <h2 style="color:#7c3aed;">Task Reminder</h2>
+        <p>You have <strong>${tasks.length}</strong> task${tasks.length > 1 ? 's' : ''} due today:</p>
+        <ul style="list-style:none;padding:0;margin:16px 0;">${taskList}</ul>
+        <p style="font-size:12px;color:#888;">This is an automated reminder from Task Manager.</p>
+      </div>
+    `,
+  });
+};
+
+module.exports = { sendVerificationEmail, sendOtpEmail, sendReminderEmail };

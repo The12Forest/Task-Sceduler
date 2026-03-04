@@ -1,0 +1,53 @@
+# docker-compose.yml — Build from local source
+# Usage: docker compose up -d --build
+
+services:
+  app:
+    build: .
+    container_name: taskmanager-app
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MONGO_URI=mongodb://mongo:27017/taskmanager
+      - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-change_me_jwt_secret}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-change_me_refresh_secret}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-manuel@steka.ch}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@taskmanager.app}
+      - CLIENT_URL=${CLIENT_URL:-http://localhost}
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - taskmanager
+
+  mongo:
+    image: mongo:7
+    container_name: taskmanager-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - taskmanager
+
+volumes:
+  mongo-data:
+  uploads:
+
+networks:
+  taskmanager:
+    driver: bridge

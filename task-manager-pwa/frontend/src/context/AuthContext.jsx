@@ -1,5 +1,15 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getMe, logoutUser, loginUser, verifyOtp, registerUser, verifyEmail as verifyEmailAPI } from '../api/endpoints';
+import {
+  getMe,
+  logoutUser,
+  loginUser,
+  verifyOtp,
+  registerUser,
+  verifyEmail as verifyEmailAPI,
+  updatePreferences as updatePrefsAPI,
+  impersonateUser as impersonateAPI,
+  stopImpersonation as stopImpersonateAPI,
+} from '../api/endpoints';
 
 const AuthContext = createContext(null);
 
@@ -58,18 +68,65 @@ export const AuthProvider = ({ children }) => {
       // ignore
     }
     localStorage.removeItem('accessToken');
+    localStorage.removeItem('adminToken');
     setUser(null);
   }, []);
+
+  const updatePreferences = useCallback(async (prefs) => {
+    const res = await updatePrefsAPI(prefs);
+    setUser((prev) => prev ? { ...prev, preferences: res.data.preferences } : prev);
+    return res.data;
+  }, []);
+
+  const impersonate = useCallback(async (userId) => {
+    // Save current admin token
+    const currentToken = localStorage.getItem('accessToken');
+    localStorage.setItem('adminToken', currentToken);
+
+    const res = await impersonateAPI(userId);
+    localStorage.setItem('accessToken', res.data.accessToken);
+    setUser(res.data.user);
+    return res.data;
+  }, []);
+
+  const stopImpersonation = useCallback(async () => {
+    // Try API first
+    try {
+      const res = await stopImpersonateAPI();
+      localStorage.setItem('accessToken', res.data.accessToken);
+      localStorage.removeItem('adminToken');
+      setUser(res.data.user);
+      return res.data;
+    } catch {
+      // Fallback: restore saved admin token
+      const adminToken = localStorage.getItem('adminToken');
+      if (adminToken) {
+        localStorage.setItem('accessToken', adminToken);
+        localStorage.removeItem('adminToken');
+        const meRes = await getMe();
+        setUser(meRes.data.user);
+      }
+    }
+  }, []);
+
+  const isAdmin = user?.role === 'admin';
+  const isImpersonating = !!user?.impersonatedBy;
 
   const value = {
     user,
     loading,
     isAuthenticated: !!user,
+    isAdmin,
+    isImpersonating,
     register,
     login,
     verifyOtpCode,
     verifyEmail,
     logout,
+    updatePreferences,
+    impersonate,
+    stopImpersonation,
+    setUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -73,7 +73,7 @@ const updateTask = asyncHandler(async (req, res) => {
     if (!list) throw new AppError('List not found', 404);
   }
 
-  const allowedFields = ['name', 'description', 'priority', 'dueDate', 'completed', 'listId'];
+  const allowedFields = ['name', 'description', 'priority', 'dueDate', 'completed', 'listId', 'reminderSent'];
   allowedFields.forEach((field) => {
     if (req.body[field] !== undefined) {
       task[field] = req.body[field];

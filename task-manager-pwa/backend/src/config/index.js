@@ -6,6 +6,7 @@ module.exports = {
   mongoUri: process.env.MONGO_URI,
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET,
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET,
+  adminEmail: process.env.ADMIN_EMAIL || 'manuel@steka.ch',
   smtp: {
     host: process.env.SMTP_HOST,
     port: parseInt(process.env.SMTP_PORT, 10) || 587,

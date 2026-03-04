@@ -28,15 +28,50 @@ const protect = async (req, _res, next) => {
       return next(new AppError('User no longer exists', 401));
     }
 
+    if (!user.isActive) {
+      return next(new AppError('Account has been deactivated', 403));
+    }
+
     if (!user.isVerified) {
       return next(new AppError('Account not verified', 403));
     }
 
-    req.user = { id: user._id, email: user.email, name: user.name };
+    // Support impersonation: if token has impersonatedBy, track it
+    req.user = {
+      id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
+
+    if (decoded.impersonatedBy) {
+      req.user.impersonatedBy = decoded.impersonatedBy;
+    }
+
     next();
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = { protect };
+/**
+ * Require admin role
+ */
+const requireAdmin = (req, _res, next) => {
+  if (req.user.role !== 'admin') {
+    return next(new AppError('Admin access required', 403));
+  }
+  next();
+};
+
+/**
+ * Require admin or moderator role
+ */
+const requireModeratorOrAdmin = (req, _res, next) => {
+  if (req.user.role !== 'admin' && req.user.role !== 'moderator') {
+    return next(new AppError('Insufficient permissions', 403));
+  }
+  next();
+};
+
+module.exports = { protect, requireAdmin, requireModeratorOrAdmin };

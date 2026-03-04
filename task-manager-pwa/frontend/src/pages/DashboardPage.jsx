@@ -57,6 +57,14 @@ const DashboardPage = () => {
     }
   };
 
+  const handleInlineUpdate = async (id, data) => {
+    try {
+      await editTask(id, data);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update task');
+    }
+  };
+
   const openNewTaskModal = () => {
     setEditingTask(null);
     setModalOpen(true);
@@ -148,6 +156,7 @@ const DashboardPage = () => {
               onToggle={toggleComplete}
               onEdit={handleEdit}
               onDelete={handleDelete}
+              onInlineUpdate={handleInlineUpdate}
             />
           ))}
         </div>

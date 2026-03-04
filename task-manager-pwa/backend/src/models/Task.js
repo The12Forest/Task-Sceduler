@@ -43,6 +43,10 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    reminderSent: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
