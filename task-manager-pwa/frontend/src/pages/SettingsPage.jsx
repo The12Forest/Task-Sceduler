@@ -5,7 +5,7 @@ import { changePassword, changeEmail, setupTotp, verifyTotpSetup, disableTotp } 
 import toast from 'react-hot-toast';
 
 const SettingsPage = () => {
-  const { user, updatePreferences, setUser } = useAuth();
+  const { user, setUser } = useAuth();
   const openSidebar = useSidebarOpen();
 
   // Password change
@@ -15,9 +15,6 @@ const SettingsPage = () => {
   // Email change
   const [emailForm, setEmailForm] = useState({ password: '', newEmail: '' });
   const [emailLoading, setEmailLoading] = useState(false);
-
-  // Preferences
-  const [prefsLoading, setPrefsLoading] = useState(false);
 
   // 2FA
   const [twoFaStep, setTwoFaStep] = useState('idle'); // 'idle' | 'setup' | 'verify'
@@ -70,18 +67,6 @@ const SettingsPage = () => {
     }
   };
 
-  const handlePrefChange = async (key, value) => {
-    setPrefsLoading(true);
-    try {
-      await updatePreferences({ [key]: value });
-      toast.success('Preference updated');
-    } catch {
-      toast.error('Failed to update preference');
-    } finally {
-      setPrefsLoading(false);
-    }
-  };
-
   const handleSetupTotp = async () => {
     setTwoFaLoading(true);
     try {
@@ -129,8 +114,6 @@ const SettingsPage = () => {
       setTwoFaLoading(false);
     }
   };
-
-  const prefs = user?.preferences || {};
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -243,7 +226,7 @@ const SettingsPage = () => {
       </div>
 
       {/* Two-Factor Authentication */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6 mb-6">
+      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
         <h2 className="text-lg font-semibold text-white mb-2">Two-Factor Authentication</h2>
         <p className="text-sm text-gray-500 mb-4">
           Add an extra layer of security using an authenticator app like Google Authenticator or Authy.
@@ -351,80 +334,6 @@ const SettingsPage = () => {
             </form>
           </div>
         )}
-      </div>
-
-      {/* UI Preferences */}
-      <div className="bg-dark-card border border-dark-border rounded-xl p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">UI Preferences</h2>
-        <div className="space-y-5">
-          {/* Theme */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium text-sm">Theme</p>
-              <p className="text-xs text-gray-500">Choose light or dark mode</p>
-            </div>
-            <select
-              value={prefs.theme || 'dark'}
-              onChange={(e) => handlePrefChange('theme', e.target.value)}
-              disabled={prefsLoading}
-              className="px-3 py-1.5 bg-dark-surface border border-dark-border rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-            </select>
-          </div>
-
-          {/* Sidebar default */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium text-sm">Sidebar Default</p>
-              <p className="text-xs text-gray-500">Start with sidebar collapsed or expanded</p>
-            </div>
-            <select
-              value={prefs.sidebarCollapsed ? 'collapsed' : 'expanded'}
-              onChange={(e) => handlePrefChange('sidebarCollapsed', e.target.value === 'collapsed')}
-              disabled={prefsLoading}
-              className="px-3 py-1.5 bg-dark-surface border border-dark-border rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-            >
-              <option value="expanded">Expanded</option>
-              <option value="collapsed">Collapsed</option>
-            </select>
-          </div>
-
-          {/* Default page */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium text-sm">Default Landing Page</p>
-              <p className="text-xs text-gray-500">Page to show after login</p>
-            </div>
-            <select
-              value={prefs.defaultPage || 'dashboard'}
-              onChange={(e) => handlePrefChange('defaultPage', e.target.value)}
-              disabled={prefsLoading}
-              className="px-3 py-1.5 bg-dark-surface border border-dark-border rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-            >
-              <option value="dashboard">Dashboard</option>
-              <option value="completed">Completed Tasks</option>
-            </select>
-          </div>
-
-          {/* Task view */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white font-medium text-sm">Task View</p>
-              <p className="text-xs text-gray-500">How to display tasks</p>
-            </div>
-            <select
-              value={prefs.taskView || 'detailed'}
-              onChange={(e) => handlePrefChange('taskView', e.target.value)}
-              disabled={prefsLoading}
-              className="px-3 py-1.5 bg-dark-surface border border-dark-border rounded-lg text-white text-sm focus:outline-none focus:border-primary-500"
-            >
-              <option value="detailed">Detailed</option>
-              <option value="compact">Compact</option>
-            </select>
-          </div>
-        </div>
       </div>
     </div>
   );

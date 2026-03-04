@@ -24,7 +24,7 @@ const Navbar = () => {
           <svg className="w-8 h-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
-          <span className="text-xl font-bold text-white">TaskManager</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white">TaskManager</span>
         </Link>
 
         <div className="flex items-center gap-3">
@@ -34,7 +34,7 @@ const Navbar = () => {
               {/* Settings link */}
               <Link
                 to="/settings"
-                className="p-2 text-gray-400 hover:text-white hover:bg-dark-surface rounded-lg transition-colors"
+                className="p-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-dark-surface rounded-lg transition-colors"
                 title="Settings"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -56,12 +56,12 @@ const Navbar = () => {
                 </Link>
               )}
 
-              <span className="text-sm text-gray-400 hidden sm:inline">
+              <span className="text-sm text-gray-500 dark:text-gray-400 hidden sm:inline">
                 {user?.name}
               </span>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm bg-dark-surface text-gray-300 rounded-lg hover:bg-red-600/20 hover:text-red-400 transition-all duration-200 border border-dark-border"
+                className="px-4 py-2 text-sm bg-dark-surface text-gray-600 dark:text-gray-300 rounded-lg hover:bg-red-600/20 hover:text-red-400 transition-all duration-200 border border-dark-border"
               >
                 Logout
               </button>

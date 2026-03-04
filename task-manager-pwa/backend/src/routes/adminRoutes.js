@@ -11,6 +11,8 @@ const {
   changeUserRole,
   forcePasswordReset,
   deleteUser,
+  verifyUser,
+  adminDisable2FA,
   getSystemConfig,
   updateSystemConfig,
   sendTestEmail,
@@ -23,8 +25,14 @@ const {
 
 // All admin routes require authentication + admin role
 router.use(protect);
-router.use(requireAdmin);
 router.use(adminLimiter);
+
+// Stop impersonation must come BEFORE requireAdmin,
+// because the impersonated user may not be an admin
+router.post('/stop-impersonation', stopImpersonation);
+
+// Everything else requires admin
+router.use(requireAdmin);
 
 // Dashboard stats
 router.get('/stats', getStats);
@@ -35,6 +43,8 @@ router.get('/users/:id', getUser);
 router.put('/users/:id/toggle-active', toggleUserActive);
 router.put('/users/:id/role', changeUserRole);
 router.post('/users/:id/force-password-reset', forcePasswordReset);
+router.post('/users/:id/verify', verifyUser);
+router.post('/users/:id/disable-2fa', adminDisable2FA);
 router.delete('/users/:id', deleteUser);
 
 // System configuration
@@ -42,9 +52,9 @@ router.get('/config', getSystemConfig);
 router.put('/config', updateSystemConfig);
 router.post('/config/test-email', sendTestEmail);
 
-// Impersonation
+// Impersonation (start — requires admin, registered above requireAdmin)
 router.post('/impersonate/:userId', impersonateUser);
-router.post('/stop-impersonation', stopImpersonation);
+// stop-impersonation is registered above requireAdmin
 
 // Audit logs
 router.get('/audit-logs', getAuditLogs);

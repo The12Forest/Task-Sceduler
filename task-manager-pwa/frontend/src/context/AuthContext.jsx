@@ -23,12 +23,32 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Apply theme to DOM
+  const applyTheme = useCallback((theme) => {
+    if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  // Cache user preferences to localStorage for zero-lag loading
+  const cachePrefs = useCallback((prefs) => {
+    if (prefs) {
+      localStorage.setItem('userPrefs', JSON.stringify(prefs));
+      applyTheme(prefs.theme);
+    }
+  }, [applyTheme]);
+
   // Check auth on mount
   useEffect(() => {
     const token = localStorage.getItem('accessToken');
     if (token) {
       getMe()
-        .then((res) => setUser(res.data.user))
+        .then((res) => {
+          setUser(res.data.user);
+          cachePrefs(res.data.user.preferences);
+        })
         .catch(() => {
           localStorage.removeItem('accessToken');
           setUser(null);
@@ -37,17 +57,28 @@ export const AuthProvider = ({ children }) => {
     } else {
       setLoading(false);
     }
-  }, []);
+  }, [cachePrefs]);
 
   const register = useCallback(async (data) => {
     const res = await registerUser(data);
+    // First-In Admin: auto-login if accessToken is returned
+    if (res.data.accessToken) {
+      localStorage.setItem('accessToken', res.data.accessToken);
+      setUser(res.data.user);
+    }
     return res.data;
   }, []);
 
   const login = useCallback(async (data) => {
     const res = await loginUser(data);
+    // Direct login (no 2FA) — token returned immediately
+    if (res.data.accessToken) {
+      localStorage.setItem('accessToken', res.data.accessToken);
+      setUser(res.data.user);
+      if (res.data.user?.preferences) cachePrefs(res.data.user.preferences);
+    }
     return res.data;
-  }, []);
+  }, [cachePrefs]);
 
   const verifyOtpCode = useCallback(async (data) => {
     const res = await verifyOtp(data);
@@ -69,14 +100,17 @@ export const AuthProvider = ({ children }) => {
     }
     localStorage.removeItem('accessToken');
     localStorage.removeItem('adminToken');
+    localStorage.removeItem('userPrefs');
     setUser(null);
-  }, []);
+    applyTheme('dark'); // Reset to default
+  }, [applyTheme]);
 
   const updatePreferences = useCallback(async (prefs) => {
     const res = await updatePrefsAPI(prefs);
     setUser((prev) => prev ? { ...prev, preferences: res.data.preferences } : prev);
+    cachePrefs(res.data.preferences);
     return res.data;
-  }, []);
+  }, [cachePrefs]);
 
   const impersonate = useCallback(async (userId) => {
     // Save current admin token

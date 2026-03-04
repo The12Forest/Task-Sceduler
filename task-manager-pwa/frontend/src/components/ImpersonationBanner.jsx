@@ -1,9 +1,16 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ImpersonationBanner = () => {
   const { user, isImpersonating, stopImpersonation } = useAuth();
+  const navigate = useNavigate();
 
   if (!isImpersonating) return null;
+
+  const handleStop = async () => {
+    await stopImpersonation();
+    navigate('/admin/users');
+  };
 
   return (
     <div className="bg-yellow-600/90 text-yellow-50 px-4 py-2 text-sm flex items-center justify-between gap-3 z-50">
@@ -17,7 +24,7 @@ const ImpersonationBanner = () => {
         </span>
       </div>
       <button
-        onClick={stopImpersonation}
+        onClick={handleStop}
         className="px-3 py-1 bg-yellow-800 hover:bg-yellow-900 rounded-md text-xs font-medium transition-colors whitespace-nowrap"
       >
         Return to Admin

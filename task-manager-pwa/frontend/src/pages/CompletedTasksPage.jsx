@@ -106,6 +106,32 @@ const CompletedTasksPage = () => {
                     {task.description && (
                       <p className="text-sm text-gray-500 mt-1 line-clamp-2">{task.description}</p>
                     )}
+
+                    {/* Tags */}
+                    {task.tags && task.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {task.tags.map((tag) => (
+                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-gray-700/50 text-gray-400 border border-gray-600/30">
+                            #{tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Subtask summary */}
+                    {task.subtasks && task.subtasks.length > 0 && (() => {
+                      const done = task.subtasks.filter((s) => s.completed).length;
+                      const total = task.subtasks.length;
+                      return (
+                        <div className="mt-2 flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden max-w-[120px]">
+                            <div className="h-full bg-green-600 rounded-full" style={{ width: `${(done / total) * 100}%` }} />
+                          </div>
+                          <span className="text-xs text-gray-500">{done}/{total} subtasks</span>
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex items-center gap-4 mt-3 text-xs text-gray-600">
                       {task.dueDate && (
                         <span className="flex items-center gap-1">

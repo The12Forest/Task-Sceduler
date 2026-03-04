@@ -4,6 +4,8 @@ import {
   createTask as createTaskAPI,
   updateTask as updateTaskAPI,
   deleteTask as deleteTaskAPI,
+  toggleSubtask as toggleSubtaskAPI,
+  fetchUserTags as fetchUserTagsAPI,
 } from '../api/endpoints';
 import { saveOfflineTask, getAllOfflineTasks } from '../services/indexedDB';
 import { syncOfflineTasks } from '../services/syncService';
@@ -23,6 +25,8 @@ export const useTask = () => {
 export const TaskProvider = ({ children }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [userTags, setUserTags] = useState([]);
+  const [activeTag, setActiveTag] = useState(null);
   const { isAuthenticated } = useAuth();
   const isOnline = useOnlineStatus();
   const { selectedListId, sortTasks, refreshListCounts } = useList();
@@ -56,9 +60,21 @@ export const TaskProvider = ({ children }) => {
     }
   }, [isAuthenticated, isOnline, selectedListId]);
 
+  // Fetch user's unique tags
+  const loadUserTags = useCallback(async () => {
+    if (!isAuthenticated || !isOnline) return;
+    try {
+      const res = await fetchUserTagsAPI();
+      setUserTags(res.data.tags || []);
+    } catch {
+      /* non-critical */
+    }
+  }, [isAuthenticated, isOnline]);
+
   useEffect(() => {
     loadTasks();
-  }, [loadTasks]);
+    loadUserTags();
+  }, [loadTasks, loadUserTags]);
 
   // Schedule notifications whenever tasks change
   useEffect(() => {
@@ -95,6 +111,7 @@ export const TaskProvider = ({ children }) => {
         const res = await createTaskAPI(dataWithList);
         setTasks((prev) => [res.data.task, ...prev]);
         refreshListCounts();
+        loadUserTags();
         return res.data.task;
       } else {
         const offlineTask = await saveOfflineTask(
@@ -129,8 +146,19 @@ export const TaskProvider = ({ children }) => {
     setTasks((prev) => prev.map((t) => (t._id === id ? res.data.task : t)));
   }, []);
 
+  const toggleSubtaskComplete = useCallback(async (taskId, subtaskId) => {
+    const res = await toggleSubtaskAPI(taskId, subtaskId);
+    setTasks((prev) => prev.map((t) => (t._id === taskId ? res.data.task : t)));
+  }, []);
+
   // Separate active and completed
-  const activeTasks = sortTasks(tasks.filter((t) => !t.completed));
+  const activeTasks = sortTasks(
+    tasks.filter((t) => {
+      if (t.completed) return false;
+      if (activeTag && !(t.tags || []).includes(activeTag)) return false;
+      return true;
+    })
+  );
   const completedTasks = tasks.filter((t) => t.completed);
 
   // Stats (active tasks only for current list; overdue counts as dueToday)
@@ -153,11 +181,15 @@ export const TaskProvider = ({ children }) => {
     completedTasks,           // completed tasks for /completed page
     loading,
     stats,
+    userTags,
+    activeTag,
+    setActiveTag,
     loadTasks,
     addTask,
     editTask,
     removeTask,
     toggleComplete,
+    toggleSubtaskComplete,
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

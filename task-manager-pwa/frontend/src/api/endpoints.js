@@ -13,6 +13,10 @@ export const changePassword = (data) => api.put('/auth/change-password', data);
 export const changeEmail = (data) => api.put('/auth/change-email', data);
 export const updatePreferences = (data) => api.put('/auth/preferences', data);
 
+// ──── System ────
+
+export const getSystemStatus = () => api.get('/system-status');
+
 // ──── TOTP / 2FA ────
 
 export const setupTotp = () => api.post('/auth/totp/setup');
@@ -62,6 +66,8 @@ export const updateTask = (id, data) => {
 export const deleteTask = (id) => api.delete(`/tasks/${id}`);
 
 export const syncTasks = (tasks) => api.post('/tasks/sync', { tasks });
+export const fetchUserTags = () => api.get('/tasks/tags');
+export const toggleSubtask = (taskId, subtaskId) => api.put(`/tasks/${taskId}/subtasks/${subtaskId}/toggle`);
 
 // ──── Admin ────
 
@@ -78,6 +84,8 @@ export const fetchAdminUser = (id) => api.get(`/admin/users/${id}`);
 export const toggleUserActive = (id) => api.put(`/admin/users/${id}/toggle-active`);
 export const changeUserRole = (id, role) => api.put(`/admin/users/${id}/role`, { role });
 export const forcePasswordReset = (id) => api.post(`/admin/users/${id}/force-password-reset`);
+export const verifyUserAdmin = (id) => api.post(`/admin/users/${id}/verify`);
+export const disable2FAAdmin = (id) => api.post(`/admin/users/${id}/disable-2fa`);
 export const deleteUserAdmin = (id) => api.delete(`/admin/users/${id}`);
 export const fetchSystemConfig = () => api.get('/admin/config');
 export const updateSystemConfig = (data) => api.put('/admin/config', data);

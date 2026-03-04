@@ -88,9 +88,9 @@ const App = () => {
           position="top-right"
           toastOptions={{
             style: {
-              background: '#1a1a2e',
-              color: '#e0e0e0',
-              border: '1px solid #2a2a4a',
+              background: 'rgb(var(--color-card))',
+              color: 'rgb(var(--color-text))',
+              border: '1px solid rgb(var(--color-border))',
             },
           }}
         />

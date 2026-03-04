@@ -1,32 +1,57 @@
 const nodemailer = require('nodemailer');
 const config = require('../config');
+const SystemConfig = require('../models/SystemConfig');
 
-const transporter = nodemailer.createTransport({
-  host: config.smtp.host,
-  port: config.smtp.port,
-  secure: false,
-  auth: {
-    user: config.smtp.user,
-    pass: config.smtp.pass,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+/**
+ * Create a nodemailer transporter from SystemConfig or fall back to .env values.
+ * A new transporter is created per send to pick up admin SMTP changes immediately.
+ */
+const getTransporter = async () => {
+  try {
+    const cfg = await SystemConfig.getConfigWithSecrets();
+    if (cfg.smtpHost && cfg.smtpUser) {
+      return {
+        transporter: nodemailer.createTransport({
+          host: cfg.smtpHost,
+          port: cfg.smtpPort || 587,
+          secure: cfg.smtpEncryption === 'ssl',
+          auth: { user: cfg.smtpUser, pass: cfg.smtpPass || '' },
+          tls: { rejectUnauthorized: false },
+        }),
+        from: `"${cfg.smtpFromName || 'Task Manager'}" <${cfg.smtpFromEmail || cfg.smtpUser}>`,
+        appName: cfg.appName || 'Task Manager',
+      };
+    }
+  } catch { /* fall through to .env */ }
+
+  // Fallback to .env values
+  return {
+    transporter: nodemailer.createTransport({
+      host: config.smtp.host,
+      port: config.smtp.port,
+      secure: false,
+      auth: { user: config.smtp.user, pass: config.smtp.pass },
+      tls: { rejectUnauthorized: false },
+    }),
+    from: `"Task Manager" <${config.smtp.from}>`,
+    appName: 'Task Manager',
+  };
+};
 
 /**
  * Send email verification link
  */
 const sendVerificationEmail = async (email, token) => {
+  const { transporter, from, appName } = await getTransporter();
   const verifyUrl = `${config.clientUrl}/verify-email?token=${token}`;
 
   await transporter.sendMail({
-    from: `"Task Manager" <${config.smtp.from}>`,
+    from,
     to: email,
     subject: 'Verify your email address',
     html: `
       <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#1a1a2e;color:#e0e0e0;border-radius:12px;">
-        <h2 style="color:#7c3aed;">Welcome to Task Manager!</h2>
+        <h2 style="color:#7c3aed;">Welcome to ${appName}!</h2>
         <p>Please verify your email by clicking the link below. It expires in 15 minutes.</p>
         <a href="${verifyUrl}" style="display:inline-block;padding:12px 24px;background:#7c3aed;color:#fff;text-decoration:none;border-radius:8px;margin:16px 0;">Verify Email</a>
         <p style="font-size:12px;color:#888;">If you didn't create an account, you can ignore this email.</p>
@@ -39,8 +64,10 @@ const sendVerificationEmail = async (email, token) => {
  * Send OTP code via email
  */
 const sendOtpEmail = async (email, otp) => {
+  const { transporter, from } = await getTransporter();
+
   await transporter.sendMail({
-    from: `"Task Manager" <${config.smtp.from}>`,
+    from,
     to: email,
     subject: 'Your login verification code',
     html: `
@@ -59,6 +86,8 @@ const sendOtpEmail = async (email, otp) => {
  * Send task reminder email
  */
 const sendReminderEmail = async (email, tasks) => {
+  const { transporter, from, appName } = await getTransporter();
+
   const taskList = tasks
     .map(
       (t) =>
@@ -71,7 +100,7 @@ const sendReminderEmail = async (email, tasks) => {
     .join('');
 
   await transporter.sendMail({
-    from: `"Task Manager" <${config.smtp.from}>`,
+    from,
     to: email,
     subject: `🔔 You have ${tasks.length} task${tasks.length > 1 ? 's' : ''} due today`,
     html: `
@@ -79,7 +108,7 @@ const sendReminderEmail = async (email, tasks) => {
         <h2 style="color:#7c3aed;">Task Reminder</h2>
         <p>You have <strong>${tasks.length}</strong> task${tasks.length > 1 ? 's' : ''} due today:</p>
         <ul style="list-style:none;padding:0;margin:16px 0;">${taskList}</ul>
-        <p style="font-size:12px;color:#888;">This is an automated reminder from Task Manager.</p>
+        <p style="font-size:12px;color:#888;">This is an automated reminder from ${appName}.</p>
       </div>
     `,
   });

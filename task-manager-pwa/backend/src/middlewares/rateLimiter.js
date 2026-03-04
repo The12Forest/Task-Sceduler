@@ -1,4 +1,16 @@
 const rateLimit = require('express-rate-limit');
+const SystemConfig = require('../models/SystemConfig');
+
+/** Cache for dynamic rate limit value */
+let _apiMax = 100;
+const refreshRateConfig = async () => {
+  try {
+    const cfg = await SystemConfig.getConfig();
+    _apiMax = cfg.apiRateLimitPerMinute || 100;
+  } catch { /* use default */ }
+};
+refreshRateConfig();
+setInterval(refreshRateConfig, 60_000);
 
 /**
  * Rate limiter for login endpoint
@@ -29,11 +41,11 @@ const otpLimiter = rateLimit({
 });
 
 /**
- * General API rate limiter
+ * General API rate limiter (reads apiRateLimitPerMinute from SystemConfig)
  */
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+  windowMs: 1 * 60 * 1000, // 1 minute window (per-minute rate)
+  max: () => _apiMax,
   message: {
     success: false,
     message: 'Too many requests. Please try again later.',

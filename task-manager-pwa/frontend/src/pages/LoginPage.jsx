@@ -17,12 +17,14 @@ const LoginPage = () => {
     setLoading(true);
     try {
       const data = await login({ email, password });
-      if (data.twoFactorRequired) {
+      if (data.accessToken) {
+        // Direct login — no 2FA
+        toast.success('Login successful!');
+        navigate('/');
+        return;
+      } else if (data.twoFactorRequired) {
         toast.success(data.message);
         setStep('totp');
-      } else {
-        toast.success(data.message);
-        setStep('otp');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed');

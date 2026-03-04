@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useList } from '../context/ListContext';
+import { useTask } from '../context/TaskContext';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 const Sidebar = ({ isOpen, onClose }) => {
   const { lists, selectedListId, selectList, addList, editList, removeList } = useList();
+  const { userTags, activeTag, setActiveTag } = useTask();
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -16,6 +18,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
   const handleSelectList = (id) => {
     selectList(id);
+    setActiveTag(null);
     navigate('/dashboard');
     onClose?.();
   };
@@ -87,7 +90,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary-600/20 text-primary-400'
-                  : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
               }`
             }
           >
@@ -104,7 +107,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-green-600/20 text-green-400'
-                  : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
               }`
             }
           >
@@ -141,7 +144,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   value={newListName}
                   onChange={(e) => setNewListName(e.target.value)}
                   placeholder="List name..."
-                  className="flex-1 px-3 py-1.5 bg-dark-surface border border-dark-border rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
+                  className="flex-1 px-3 py-1.5 bg-dark-surface border border-dark-border rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-primary-500"
                 />
                 <button
                   type="submit"
@@ -167,7 +170,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                         if (e.key === 'Enter') handleSaveEdit(list._id);
                         if (e.key === 'Escape') setEditingId(null);
                       }}
-                      className="flex-1 px-3 py-1.5 bg-dark-surface border border-primary-500 rounded-lg text-sm text-white focus:outline-none"
+                      className="flex-1 px-3 py-1.5 bg-dark-surface border border-primary-500 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none"
                     />
                     <button
                       onClick={() => handleSaveEdit(list._id)}
@@ -180,8 +183,8 @@ const Sidebar = ({ isOpen, onClose }) => {
                   <div
                     className={`group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
                       selectedListId === list._id
-                        ? 'bg-primary-600/20 text-white'
-                        : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                        ? 'bg-primary-600/20 text-gray-900 dark:text-white'
+                        : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
                     }`}
                     onClick={() => handleSelectList(list._id)}
                   >
@@ -231,6 +234,48 @@ const Sidebar = ({ isOpen, onClose }) => {
               </li>
             ))}
           </ul>
+
+          {/* Tags */}
+          {userTags.length > 0 && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Tags
+                </h3>
+                {activeTag && (
+                  <button
+                    onClick={() => {
+                      setActiveTag(null);
+                      navigate('/dashboard');
+                      onClose?.();
+                    }}
+                    className="text-xs text-gray-500 hover:text-primary-400 transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {userTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => {
+                      setActiveTag(activeTag === tag ? null : tag);
+                      navigate('/dashboard');
+                      onClose?.();
+                    }}
+                    className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                      activeTag === tag
+                        ? 'bg-primary-600/30 text-primary-300 border-primary-600/40'
+                        : 'bg-dark-surface/50 text-gray-500 dark:text-gray-400 border-dark-border hover:text-primary-400 hover:border-primary-600/30'
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Bottom nav: Settings + Admin */}
@@ -242,7 +287,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-primary-600/20 text-primary-400'
-                  : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                  : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
               }`
             }
           >
@@ -266,7 +311,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-red-600/20 text-red-400'
-                      : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
                   }`
                 }
               >
@@ -282,7 +327,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-red-600/20 text-red-400'
-                      : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
                   }`
                 }
               >
@@ -298,7 +343,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-red-600/20 text-red-400'
-                      : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
                   }`
                 }
               >
@@ -314,7 +359,7 @@ const Sidebar = ({ isOpen, onClose }) => {
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-red-600/20 text-red-400'
-                      : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                      : 'text-gray-500 dark:text-gray-400 hover:bg-dark-surface hover:text-gray-900 dark:hover:text-white'
                   }`
                 }
               >

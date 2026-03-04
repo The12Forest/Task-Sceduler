@@ -1,6 +1,7 @@
 const TodoList = require('../models/TodoList');
 const Task = require('../models/Task');
 const mongoose = require('mongoose');
+const SystemConfig = require('../models/SystemConfig');
 const { AppError } = require('../middlewares/errorHandler');
 
 /**
@@ -60,6 +61,13 @@ exports.getLists = async (req, res, next) => {
  */
 exports.createList = async (req, res, next) => {
   try {
+    // Enforce maxListsPerUser from SystemConfig
+    const cfg = await SystemConfig.getConfig();
+    const listCount = await TodoList.countDocuments({ userId: req.user.id });
+    if (listCount >= (cfg.maxListsPerUser || 50)) {
+      return next(new AppError(`List limit reached (max ${cfg.maxListsPerUser || 50}). Delete some lists first.`, 400));
+    }
+
     const list = await TodoList.create({
       userId: req.user.id,
       name: req.body.name,

@@ -18,11 +18,14 @@ export default {
           900: '#4c1d95',
         },
         dark: {
-          bg: '#0f0f23',
-          card: '#1a1a2e',
-          surface: '#16213e',
-          border: '#2a2a4a',
+          bg: 'rgb(var(--color-bg) / <alpha-value>)',
+          card: 'rgb(var(--color-card) / <alpha-value>)',
+          surface: 'rgb(var(--color-surface) / <alpha-value>)',
+          border: 'rgb(var(--color-border) / <alpha-value>)',
         },
+      },
+      padding: {
+        safe: 'env(safe-area-inset-bottom, 0px)',
       },
     },
   },

@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 
+const subtaskSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true, maxlength: 200 },
+    completed: { type: Boolean, default: false },
+  },
+  { _id: true }
+);
+
 const taskSchema = new mongoose.Schema(
   {
     userId: {
@@ -43,9 +51,34 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
     reminderSent: {
       type: Boolean,
       default: false,
+    },
+    // ── Tags (hashtag system) ──
+    tags: {
+      type: [String],
+      default: [],
+      index: true,
+    },
+    // ── Sub-tasks ──
+    subtasks: {
+      type: [subtaskSchema],
+      default: [],
+    },
+    // ── Self-destruct: burn task data X seconds after completion ──
+    selfDestruct: {
+      type: Boolean,
+      default: false,
+    },
+    selfDestructAt: {
+      type: Date,
+      default: null,
+      index: true,
     },
   },
   {

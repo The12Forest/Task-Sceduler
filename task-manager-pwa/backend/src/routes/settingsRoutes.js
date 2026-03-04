@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middlewares/auth');
 const SystemConfig = require('../models/SystemConfig');
 const asyncHandler = require('../utils/asyncHandler');
 
-// All settings routes require authentication
-router.use(protect);
-
 /**
  * GET /api/settings/public
- * Get public system config (non-sensitive fields for frontend)
+ * Get public system config (non-sensitive fields for frontend).
+ * Does NOT require authentication so maintenance info and registration
+ * settings can be displayed on login/register pages.
  */
 router.get(
   '/public',
@@ -26,6 +24,7 @@ router.get(
         supportEmail: cfg.supportEmail,
         footerText: cfg.footerText,
         allowPublicRegistration: cfg.allowPublicRegistration,
+        requireEmailVerification: cfg.requireEmailVerification,
         defaultPriority: cfg.defaultPriority,
         allowFileUploads: cfg.allowFileUploads,
         maxTasksPerUser: cfg.maxTasksPerUser,
@@ -33,6 +32,11 @@ router.get(
         enableBrowserNotifications: cfg.enableBrowserNotifications,
         maintenanceMode: cfg.maintenanceMode,
         maintenanceMessage: cfg.maintenanceMessage,
+        // Password policy (for frontend validation hints)
+        passwordMinLength: cfg.passwordMinLength,
+        passwordRequireUppercase: cfg.passwordRequireUppercase,
+        passwordRequireNumbers: cfg.passwordRequireNumbers,
+        passwordRequireSpecial: cfg.passwordRequireSpecial,
       },
     });
   })

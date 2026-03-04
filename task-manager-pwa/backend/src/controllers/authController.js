@@ -12,31 +12,112 @@ const {
   generateVerificationToken,
   verifyAccessToken,
   verifyRefreshToken,
+  getExpiry,
 } = require('../services/tokenService');
 const { sendVerificationEmail, sendOtpEmail } = require('../services/emailService');
 
+const config = require('../config');
+
 /**
  * POST /api/auth/register
- * Register a new user and send email verification link
+ * First-In Admin: If no users exist, the first registrant becomes admin.
+ * Subsequent users follow normal registration with email verification.
  */
 const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
-
-  // Check if public registration is allowed
-  const sysConfig = await SystemConfig.getConfig();
-  if (!sysConfig.allowPublicRegistration) {
-    throw new AppError('Public registration is currently disabled', 403);
-  }
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     throw new AppError('Email already registered', 409);
   }
 
-  const user = await User.create({ name, email, password });
+  // Check if this is the FIRST user (system unclaimed)
+  const userCount = await User.countDocuments();
+
+  if (userCount === 0) {
+    // ── First-In Admin Logic ──
+    // If ADMIN_EMAIL env is set, the first registrant's email must match
+    const adminEmail = config.adminEmail;
+    if (adminEmail && email.toLowerCase() !== adminEmail.toLowerCase()) {
+      throw new AppError(
+        `This system requires the first account to use the designated admin email.`,
+        403
+      );
+    }
+
+    const admin = await User.create({
+      name,
+      email,
+      password,
+      role: 'admin',
+      isVerified: true,
+      mustChangePassword: true,
+    });
+
+    // Auto-create default list
+    await TodoList.create({ userId: admin._id, name: 'My Tasks', isDefault: true });
+
+    // Auto-login: issue tokens immediately
+    const accessToken = generateAccessToken(admin._id);
+    const refreshToken = generateRefreshToken(admin._id);
+
+    admin.refreshTokens = [refreshToken];
+    admin.lastLoginAt = new Date();
+    admin.lastLoginIp = req.ip || null;
+    await User.findByIdAndUpdate(admin._id, {
+      $set: { refreshTokens: [refreshToken], lastLoginAt: new Date(), lastLoginIp: req.ip || null },
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: getExpiry().refreshMs,
+    });
+
+    return res.status(201).json({
+      success: true,
+      isFirstUser: true,
+      accessToken,
+      user: {
+        id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        mustChangePassword: true,
+        twoFactorEnabled: false,
+        preferences: admin.preferences,
+      },
+      message: 'Welcome! You are the system administrator. Please change your password.',
+    });
+  }
+
+  // ── Subsequent Users: Normal Registration ──
+  const sysConfig = await SystemConfig.getConfig();
+  if (!sysConfig.allowPublicRegistration) {
+    throw new AppError('Public registration is currently disabled', 403);
+  }
+
+  // If email verification is disabled, auto-verify the user
+  const skipVerification = sysConfig.requireEmailVerification === false;
+  const user = await User.create({
+    name,
+    email,
+    password,
+    isVerified: skipVerification,
+  });
 
   // Auto-create the default list for this user
   await TodoList.create({ userId: user._id, name: 'My Tasks', isDefault: true });
+
+  if (skipVerification) {
+    return res.status(201).json({
+      success: true,
+      isFirstUser: false,
+      message: 'Registration successful. You can now log in.',
+    });
+  }
 
   // Generate verification token (15 min)
   const verificationToken = generateVerificationToken(user._id);
@@ -44,6 +125,7 @@ const register = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
+    isFirstUser: false,
     message: 'Registration successful. Please check your email to verify your account.',
   });
 });
@@ -80,18 +162,38 @@ const verifyEmail = asyncHandler(async (req, res) => {
  */
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
+  const sysConfig = await SystemConfig.getConfig();
 
   const user = await User.findOne({ email }).select('+password');
   if (!user) throw new AppError('Invalid email or password', 401);
 
+  // ── Brute-force / lockout check ──
+  if (sysConfig.enableBruteForceProtection) {
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      const mins = Math.ceil((user.lockedUntil - Date.now()) / 60000);
+      throw new AppError(`Account locked. Try again in ${mins} minute(s).`, 423);
+    }
+  }
+
   const isMatch = await user.comparePassword(password);
-  if (!isMatch) throw new AppError('Invalid email or password', 401);
+
+  if (!isMatch) {
+    // Increment failed attempts
+    if (sysConfig.enableBruteForceProtection) {
+      user.failedLoginAttempts = (user.failedLoginAttempts || 0) + 1;
+      if (user.failedLoginAttempts >= (sysConfig.maxFailedLoginAttempts || 5)) {
+        user.lockedUntil = new Date(Date.now() + (sysConfig.lockoutDurationMinutes || 15) * 60 * 1000);
+      }
+      await user.save();
+    }
+    throw new AppError('Invalid email or password', 401);
+  }
 
   if (!user.isVerified) {
     throw new AppError('Please verify your email before logging in', 403);
   }
 
-  // If 2FA is enabled, skip OTP email — frontend will ask for TOTP code
+  // If 2FA is enabled, frontend will ask for TOTP code
   if (user.twoFactorEnabled) {
     return res.json({
       success: true,
@@ -100,20 +202,42 @@ const login = asyncHandler(async (req, res) => {
     });
   }
 
-  // Otherwise, send email OTP as before
-  const otp = generateOtp();
-  const hashedOtp = hashOtp(otp);
+  // No 2FA — issue tokens directly
+  const maxSessions = sysConfig.maxSessionsPerUser || 5;
+  const userWithTokens = await User.findById(user._id).select('+refreshTokens');
+  const accessToken = generateAccessToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
 
-  await User.findByIdAndUpdate(user._id, {
-    'otp.code': hashedOtp,
-    'otp.expiresAt': new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+  userWithTokens.refreshTokens.push(refreshToken);
+  if (userWithTokens.refreshTokens.length > maxSessions) {
+    userWithTokens.refreshTokens = userWithTokens.refreshTokens.slice(-maxSessions);
+  }
+  userWithTokens.lastLoginAt = new Date();
+  userWithTokens.lastLoginIp = req.ip || req.connection?.remoteAddress || null;
+  userWithTokens.failedLoginAttempts = 0;
+  userWithTokens.lockedUntil = null;
+  await userWithTokens.save();
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: getExpiry().refreshMs,
   });
-
-  await sendOtpEmail(email, otp);
 
   res.json({
     success: true,
-    message: 'OTP sent to your email. Please verify to complete login.',
+    accessToken,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      mustChangePassword: user.mustChangePassword || false,
+      twoFactorEnabled: false,
+      preferences: user.preferences,
+    },
   });
 });
 
@@ -157,17 +281,19 @@ const verifyOtp = asyncHandler(async (req, res) => {
   const accessToken = generateAccessToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
 
-  // Store refresh token
+  // Store refresh token (respect maxSessionsPerUser)
+  const sysConfig = await SystemConfig.getConfig();
+  const maxSessions = sysConfig.maxSessionsPerUser || 5;
   user.refreshTokens.push(refreshToken);
-  // Keep only last 5 refresh tokens
-  if (user.refreshTokens.length > 5) {
-    user.refreshTokens = user.refreshTokens.slice(-5);
+  if (user.refreshTokens.length > maxSessions) {
+    user.refreshTokens = user.refreshTokens.slice(-maxSessions);
   }
 
   // Track login
   user.lastLoginAt = new Date();
   user.lastLoginIp = req.ip || req.connection?.remoteAddress || null;
   user.failedLoginAttempts = 0;
+  user.lockedUntil = null;
 
   await user.save();
 
@@ -175,8 +301,9 @@ const verifyOtp = asyncHandler(async (req, res) => {
   res.cookie('refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: 'lax',
+    path: '/',
+    maxAge: getExpiry().refreshMs,
   });
 
   res.json({
@@ -222,8 +349,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   res.cookie('refreshToken', newRefreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: getExpiry().refreshMs,
   });
 
   res.json({ success: true, accessToken: newAccessToken });
@@ -252,7 +380,8 @@ const logout = asyncHandler(async (req, res) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
+    path: '/',
   });
 
   res.json({ success: true, message: 'Logged out successfully' });
@@ -302,6 +431,14 @@ const changePassword = asyncHandler(async (req, res) => {
   user.password = newPassword;
   user.mustChangePassword = false;
   await user.save();
+
+  // Force logout all other sessions if enabled
+  const sysConfig = await SystemConfig.getConfig();
+  if (sysConfig.forceLogoutOnPasswordChange) {
+    const userWithTokens = await User.findById(req.user.id).select('+refreshTokens');
+    userWithTokens.refreshTokens = [];
+    await userWithTokens.save();
+  }
 
   res.json({ success: true, message: 'Password changed successfully' });
 });

@@ -131,7 +131,7 @@ const getUsers = asyncHandler(async (req, res) => {
 
   const [users, total] = await Promise.all([
     User.find(filter)
-      .select('name email role isVerified isActive lastLoginAt createdAt')
+      .select('name email role isVerified isActive lastLoginAt createdAt twoFactorEnabled')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -280,6 +280,55 @@ const deleteUser = asyncHandler(async (req, res) => {
   });
 
   res.json({ success: true, message: 'User and all associated data deleted' });
+});
+
+/**
+ * POST /api/admin/users/:id/verify
+ * Admin manually verifies a user's email
+ */
+const verifyUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) throw new AppError('User not found', 404);
+
+  if (user.isVerified) {
+    return res.json({ success: true, message: 'User is already verified' });
+  }
+
+  user.isVerified = true;
+  await user.save();
+
+  await audit(req.user.id, 'verify_user', 'user', {
+    affectedUserId: user._id,
+    details: `Manually verified ${user.email}`,
+    ip: req.ip,
+  });
+
+  res.json({ success: true, message: `User ${user.email} has been verified` });
+});
+
+/**
+ * POST /api/admin/users/:id/disable-2fa
+ * Admin forcibly disables a user's 2FA
+ */
+const adminDisable2FA = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id);
+  if (!user) throw new AppError('User not found', 404);
+
+  if (!user.twoFactorEnabled) {
+    return res.json({ success: true, message: '2FA is already disabled for this user' });
+  }
+
+  user.twoFactorEnabled = false;
+  user.totpSecret = null;
+  await user.save();
+
+  await audit(req.user.id, 'admin_disable_2fa', 'user', {
+    affectedUserId: user._id,
+    details: `Admin disabled 2FA for ${user.email}`,
+    ip: req.ip,
+  });
+
+  res.json({ success: true, message: `2FA disabled for ${user.email}` });
 });
 
 // ═══════════════════════════════════════════
@@ -582,6 +631,8 @@ module.exports = {
   changeUserRole,
   forcePasswordReset,
   deleteUser,
+  verifyUser,
+  adminDisable2FA,
   getSystemConfig,
   updateSystemConfig,
   sendTestEmail,

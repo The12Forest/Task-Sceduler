@@ -21,19 +21,20 @@ const { protect } = require('../middlewares/auth');
 const { loginLimiter, otpLimiter } = require('../middlewares/rateLimiter');
 const {
   validate,
+  validatePassword,
   registerSchema,
   loginSchema,
   otpSchema,
 } = require('../middlewares/validation');
 
-router.post('/register', validate(registerSchema), register);
+router.post('/register', validate(registerSchema), validatePassword, register);
 router.get('/verify-email', verifyEmail);
 router.post('/login', loginLimiter, validate(loginSchema), login);
 router.post('/verify-otp', otpLimiter, validate(otpSchema), verifyOtp);
 router.post('/refresh', refreshAccessToken);
 router.post('/logout', logout);
 router.get('/me', protect, getMe);
-router.put('/change-password', protect, changePassword);
+router.put('/change-password', protect, validatePassword, changePassword);
 router.put('/change-email', protect, changeEmail);
 router.put('/preferences', protect, updatePreferences);
 

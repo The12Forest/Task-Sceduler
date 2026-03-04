@@ -1,34 +1,35 @@
 const cron = require('node-cron');
 const Task = require('../models/Task');
 const User = require('../models/User');
+const SystemConfig = require('../models/SystemConfig');
 const { sendReminderEmail } = require('../services/emailService');
 
 /**
  * Task Reminder Cron Job
- * Runs every day at 08:00 server time.
- * Finds all tasks with a dueDate of today that are not completed
- * and have not already been sent a reminder, then sends email notifications.
+ * Runs every 15 minutes.
+ * Respects enableEmailReminders and reminderOffsetMinutes from SystemConfig.
  */
 const startReminderJob = () => {
-  cron.schedule('0 8 * * *', async () => {
-    console.log('[Reminder Job] Running task reminder check...');
-
+  cron.schedule('*/15 * * * *', async () => {
     try {
-      const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const cfg = await SystemConfig.getConfig();
 
-      // Find all non-completed tasks due today that haven't been reminded yet
+      // Bail out if email reminders are disabled
+      if (!cfg.enableEmailReminders) return;
+
+      const offsetMs = (cfg.reminderOffsetMinutes || 60) * 60 * 1000;
+      const now = new Date();
+
+      // Find tasks due within the offset window that haven't been reminded
+      const windowEnd = new Date(now.getTime() + offsetMs);
+
       const tasks = await Task.find({
-        dueDate: { $gte: startOfDay, $lt: endOfDay },
+        dueDate: { $gte: now, $lte: windowEnd },
         completed: false,
         reminderSent: { $ne: true },
       }).lean();
 
-      if (tasks.length === 0) {
-        console.log('[Reminder Job] No tasks due today.');
-        return;
-      }
+      if (tasks.length === 0) return;
 
       // Group tasks by userId
       const tasksByUser = {};
@@ -58,14 +59,12 @@ const startReminderJob = () => {
           console.error(`[Reminder Job] Failed to notify user ${userId}:`, err.message);
         }
       }
-
-      console.log('[Reminder Job] Completed.');
     } catch (err) {
       console.error('[Reminder Job] Error:', err.message);
     }
   });
 
-  console.log('Task reminder job scheduled (daily at 08:00).');
+  console.log('Task reminder job scheduled (every 15 minutes).');
 };
 
 module.exports = { startReminderJob };

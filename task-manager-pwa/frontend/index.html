@@ -3,13 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#7c3aed" />
     <link rel="manifest" href="/manifest.json" />
     <title>Task Manager</title>
   </head>
-  <body class="bg-dark-bg text-gray-100 min-h-screen">
+  <body class="bg-dark-bg min-h-screen">
     <div id="root"></div>
+    <!-- Zero-lag theme: apply cached theme before React renders -->
+    <script>
+      try {
+        var t = JSON.parse(localStorage.getItem('userPrefs') || '{}').theme;
+        if (t === 'light') {
+          document.documentElement.classList.remove('dark');
+        }
+      } catch(e) {}
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

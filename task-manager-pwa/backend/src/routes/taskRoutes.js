@@ -8,6 +8,8 @@ const {
   updateTask,
   deleteTask,
   syncTasks,
+  getUserTags,
+  toggleSubtask,
 } = require('../controllers/taskController');
 
 const { protect } = require('../middlewares/auth');
@@ -24,9 +26,11 @@ router.use(protect);
 router.use(apiLimiter);
 
 router.get('/', getTasks);
+router.get('/tags', getUserTags);
 router.get('/:id', getTask);
 router.post('/', upload.single('file'), validate(createTaskSchema), createTask);
 router.put('/:id', upload.single('file'), validate(updateTaskSchema), updateTask);
+router.put('/:id/subtasks/:subtaskId/toggle', toggleSubtask);
 router.delete('/:id', deleteTask);
 router.post('/sync', syncTasks);
 

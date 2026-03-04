@@ -1,13 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { getSystemStatus } from '../api/endpoints';
 import toast from 'react-hot-toast';
 
 const RegisterPage = () => {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const [unclaimed, setUnclaimed] = useState(false);
+  const { register, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Check if system is unclaimed
+  useEffect(() => {
+    getSystemStatus()
+      .then((res) => setUnclaimed(!res.data.claimed))
+      .catch(() => setUnclaimed(false));
+  }, []);
+
+  // Redirect if already authenticated (e.g. after first-in auto-login)
+  useEffect(() => {
+    if (isAuthenticated) navigate('/dashboard', { replace: true });
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e) =>
     setForm((p) => ({ ...p, [e.target.name]: e.target.value }));
@@ -17,8 +31,13 @@ const RegisterPage = () => {
     setLoading(true);
     try {
       const data = await register(form);
-      toast.success(data.message);
-      navigate('/login');
+      if (data.isFirstUser) {
+        toast.success('Welcome! You are the system administrator.');
+        navigate('/dashboard', { replace: true });
+      } else {
+        toast.success(data.message);
+        navigate('/login');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -30,9 +49,25 @@ const RegisterPage = () => {
     <div className="min-h-[80vh] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="bg-dark-card border border-dark-border rounded-2xl p-8">
-          <h1 className="text-2xl font-bold text-white mb-2">Create Account</h1>
+          {/* Unclaimed banner */}
+          {unclaimed && (
+            <div className="mb-4 p-3 bg-primary-600/10 border border-primary-600/30 rounded-lg">
+              <p className="text-primary-300 text-sm font-medium flex items-center gap-2">
+                <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                First registration claims admin access.
+              </p>
+            </div>
+          )}
+
+          <h1 className="text-2xl font-bold text-white mb-2">
+            {unclaimed ? 'Claim This System' : 'Create Account'}
+          </h1>
           <p className="text-gray-400 mb-6">
-            Sign up to start managing your tasks
+            {unclaimed
+              ? 'Register to become the system administrator'
+              : 'Sign up to start managing your tasks'}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">

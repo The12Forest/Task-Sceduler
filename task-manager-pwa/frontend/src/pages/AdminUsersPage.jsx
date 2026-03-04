@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   fetchAdminUsers,
   toggleUserActive,
   changeUserRole,
   forcePasswordReset,
+  verifyUserAdmin,
+  disable2FAAdmin,
   deleteUserAdmin,
-  impersonateUser,
 } from '../api/endpoints';
 import { useAuth } from '../context/AuthContext';
 import { useSidebarOpen } from '../App';
@@ -20,6 +22,7 @@ const roleBadge = {
 const AdminUsersPage = () => {
   const openSidebar = useSidebarOpen();
   const { impersonate } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -58,6 +61,11 @@ const AdminUsersPage = () => {
 
   const handleToggleActive = (u) => act(toggleUserActive, u._id);
   const handleForceReset = (u) => act(forcePasswordReset, u._id);
+  const handleVerifyUser = (u) => act(verifyUserAdmin, u._id);
+  const handleDisable2FA = (u) => {
+    if (!confirm(`Disable 2FA for "${u.name}"? They will need to re-setup.`)) return;
+    act(disable2FAAdmin, u._id);
+  };
   const handleDelete = (u) => {
     if (!confirm(`Delete user "${u.name}" and all their data? This cannot be undone.`)) return;
     act(deleteUserAdmin, u._id);
@@ -65,8 +73,9 @@ const AdminUsersPage = () => {
   const handleRoleChange = (u, role) => act(changeUserRole, u._id, role);
   const handleImpersonate = async (u) => {
     try {
-      const res = await impersonateUser(u._id);
-      impersonate(res.data.token, res.data.user);
+      await impersonate(u._id);
+      toast.success(`Now impersonating ${u.name}`);
+      navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to impersonate');
     }
@@ -119,6 +128,7 @@ const AdminUsersPage = () => {
                 <th className="py-3 px-2">Role</th>
                 <th className="py-3 px-2 hidden md:table-cell">Tasks</th>
                 <th className="py-3 px-2 hidden md:table-cell">Status</th>
+                <th className="py-3 px-2 hidden md:table-cell">2FA</th>
                 <th className="py-3 px-2 hidden lg:table-cell">Last Login</th>
                 <th className="py-3 px-2 text-right">Actions</th>
               </tr>
@@ -165,6 +175,18 @@ const AdminUsersPage = () => {
                       )}
                     </td>
 
+                    {/* 2FA */}
+                    <td className="py-3 px-2 hidden md:table-cell">
+                      {u.twoFactorEnabled ? (
+                        <span className="text-xs text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                          On
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-500">Off</span>
+                      )}
+                    </td>
+
                     {/* Last Login */}
                     <td className="py-3 px-2 text-gray-500 text-xs hidden lg:table-cell">
                       {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never'}
@@ -172,7 +194,7 @@ const AdminUsersPage = () => {
 
                     {/* Actions */}
                     <td className="py-3 px-2">
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1 flex-wrap">
                         {/* Toggle Active */}
                         <button
                           onClick={() => handleToggleActive(u)}
@@ -196,6 +218,30 @@ const AdminUsersPage = () => {
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                         </button>
+
+                        {/* Verify User */}
+                        {!u.isVerified && (
+                          <button
+                            onClick={() => handleVerifyUser(u)}
+                            disabled={disabled}
+                            title="Verify user email"
+                            className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-green-400 transition-colors disabled:opacity-50"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" /></svg>
+                          </button>
+                        )}
+
+                        {/* Disable 2FA */}
+                        {u.twoFactorEnabled && (
+                          <button
+                            onClick={() => handleDisable2FA(u)}
+                            disabled={disabled}
+                            title="Disable 2FA"
+                            className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-orange-400 transition-colors disabled:opacity-50"
+                          >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                          </button>
+                        )}
 
                         {/* Impersonate */}
                         <button
