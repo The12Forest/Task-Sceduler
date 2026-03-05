@@ -47,7 +47,7 @@ const AppLayout = ({ guard: Guard }) => {
       <ListProvider>
         <TaskProvider>
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <main className="md:pl-64 min-h-[calc(100vh-64px)]">
+          <main className="md:pl-64 min-h-[calc(100dvh-4rem)]">
             <SidebarContext.Provider value={() => setSidebarOpen(true)}>
               <Outlet />
             </SidebarContext.Provider>

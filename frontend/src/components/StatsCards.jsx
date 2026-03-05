@@ -39,18 +39,18 @@ const StatsCards = ({ stats }) => {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-3 gap-2 sm:gap-4">
       {cards.map((card) => (
         <div
           key={card.label}
-          className={`${card.bg} ${card.border} border rounded-xl p-5 transition-all duration-300 hover:scale-[1.02]`}
+          className={`${card.bg} ${card.border} border rounded-xl p-3 sm:p-5 transition-all duration-300 hover:scale-[1.02]`}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-1">
             <div>
-              <p className="text-sm text-gray-400">{card.label}</p>
-              <p className={`text-3xl font-bold mt-1 ${card.color}`}>{card.value}</p>
+              <p className="text-xs sm:text-sm text-gray-400">{card.label}</p>
+              <p className={`text-xl sm:text-3xl font-bold mt-0.5 sm:mt-1 ${card.color}`}>{card.value}</p>
             </div>
-            <div className={`${card.color} opacity-50`}>{card.icon}</div>
+            <div className={`${card.color} opacity-50 hidden sm:block`}>{card.icon}</div>
           </div>
         </div>
       ))}

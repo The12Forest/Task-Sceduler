@@ -114,22 +114,22 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editingTask }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:px-4">
+      {/* Backdrop — hidden on mobile since we go fullscreen */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm hidden sm:block"
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <div className="relative bg-dark-card border border-dark-border rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+      {/* Modal — fullscreen on mobile, centered card on sm+ */}
+      <div className="relative bg-dark-card sm:border sm:border-dark-border sm:rounded-2xl w-full sm:max-w-lg sm:shadow-2xl sm:animate-in h-[100dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto flex flex-col">
+        <div className="flex items-center justify-between p-4 sm:p-6 sm:pb-0 border-b border-dark-border sm:border-b-0 sticky top-0 bg-dark-card z-10 sm:static sm:mb-6">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">
             {editingTask ? 'Edit Task' : 'Create New Task'}
           </h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
+            className="p-2 -mr-1 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -137,7 +137,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editingTask }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 flex-1 overflow-y-auto p-4 sm:px-6 sm:pt-0">
           {/* Task Name */}
           <div>
             <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
@@ -336,19 +336,19 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editingTask }) => {
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
+          {/* Actions — sticky at bottom on mobile */}
+          <div className="flex gap-3 pt-2 pb-safe sticky bottom-0 bg-dark-card sm:static sm:bg-transparent border-t border-dark-border sm:border-t-0 -mx-4 px-4 sm:mx-0 sm:px-0 py-3 sm:py-0 sm:pt-2 mt-auto">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-2.5 bg-dark-surface text-gray-500 dark:text-gray-400 rounded-lg hover:bg-dark-border transition-colors border border-dark-border"
+              className="flex-1 px-4 py-3 sm:py-2.5 bg-dark-surface text-gray-500 dark:text-gray-400 rounded-lg hover:bg-dark-border transition-colors border border-dark-border"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting || !form.name.trim()}
-              className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+              className="flex-1 px-4 py-3 sm:py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
             >
               {submitting ? 'Saving...' : editingTask ? 'Update Task' : 'Create Task'}
             </button>

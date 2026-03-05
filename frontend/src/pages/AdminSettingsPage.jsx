@@ -165,6 +165,7 @@ const AdminSettingsPage = () => {
   const [activeSection, setActiveSection] = useState('general');
   const [testEmail, setTestEmail] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
+  const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -260,22 +261,62 @@ const AdminSettingsPage = () => {
         )}
       </div>
 
-      {/* Section Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6 pb-4 border-b border-dark-border overflow-x-auto">
-        {sections.map((s) => (
+      {/* Section Nav — hamburger dropdown on mobile, horizontal tabs on desktop */}
+      <div className="relative mb-6 pb-4 border-b border-dark-border">
+        {/* Mobile: current section button + dropdown */}
+        <div className="md:hidden">
           <button
-            key={s.id}
-            onClick={() => setActiveSection(s.id)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-              activeSection === s.id
-                ? 'bg-primary-600/20 text-primary-400 border border-primary-500/30'
-                : 'text-gray-400 hover:text-white hover:bg-dark-surface border border-transparent'
-            }`}
+            onClick={() => setSectionMenuOpen((v) => !v)}
+            className="w-full flex items-center justify-between px-4 py-2.5 bg-dark-surface border border-dark-border rounded-lg text-sm font-medium text-white"
           >
-            <span>{s.icon}</span>
-            {s.label}
+            <span className="flex items-center gap-2">
+              <span>{sections.find((s) => s.id === activeSection)?.icon}</span>
+              {sections.find((s) => s.id === activeSection)?.label}
+            </span>
+            <svg className={`w-4 h-4 text-gray-400 transition-transform ${sectionMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
-        ))}
+          {sectionMenuOpen && (
+            <>
+              <div className="fixed inset-0 z-30" onClick={() => setSectionMenuOpen(false)} />
+              <div className="absolute left-0 right-0 mt-1 bg-dark-card border border-dark-border rounded-xl shadow-2xl z-40 py-1 max-h-[60vh] overflow-y-auto">
+                {sections.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => { setActiveSection(s.id); setSectionMenuOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition-colors ${
+                      activeSection === s.id
+                        ? 'bg-primary-600/20 text-primary-400'
+                        : 'text-gray-400 hover:bg-dark-surface hover:text-white'
+                    }`}
+                  >
+                    <span>{s.icon}</span>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Desktop: horizontal tabs */}
+        <div className="hidden md:flex flex-wrap gap-2">
+          {sections.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setActiveSection(s.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                activeSection === s.id
+                  ? 'bg-primary-600/20 text-primary-400 border border-primary-500/30'
+                  : 'text-gray-400 hover:text-white hover:bg-dark-surface border border-transparent'
+              }`}
+            >
+              <span>{s.icon}</span>
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Fields */}

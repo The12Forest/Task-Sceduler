@@ -76,7 +76,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
       {/* Sidebar panel */}
       <aside
-        className={`fixed top-16 left-0 h-[calc(100vh-64px)] w-64 bg-dark-card border-r border-dark-border flex flex-col z-40 transition-transform duration-300 ${
+        className={`fixed top-16 left-0 h-[calc(100dvh-4rem)] w-64 bg-dark-card border-r border-dark-border flex flex-col z-40 transition-transform duration-300 ${
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >

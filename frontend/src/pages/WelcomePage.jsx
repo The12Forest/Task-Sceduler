@@ -55,17 +55,17 @@ const WelcomePage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-primary-900/20 via-transparent to-primary-600/10" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-primary-600/5 rounded-full blur-3xl" />
 
-        <div className="relative max-w-5xl mx-auto px-4 pt-20 pb-24 text-center">
+        <div className="relative max-w-5xl mx-auto px-4 pt-16 sm:pt-20 pb-16 sm:pb-24 text-center min-h-[80dvh] flex flex-col justify-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 bg-primary-600/10 border border-primary-600/20 rounded-full">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
             <span className="text-sm text-primary-300">Open Source &middot; Self-hosted &middot; Privacy-focused</span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
             Task<span className="text-primary-400">Manager</span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
             A modern, offline-capable, secure task management platform built for individuals and teams.
           </p>
 
@@ -96,7 +96,7 @@ const WelcomePage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
           {['Progressive Web App', 'Works Offline', 'JWT + 2FA Auth', 'Multiple Lists', 'Overdue Tracking'].map((item) => (
             <div
               key={item}

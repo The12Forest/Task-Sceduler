@@ -24,10 +24,10 @@ const Navbar = () => {
           <svg className="w-8 h-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
           </svg>
-          <span className="text-xl font-bold text-gray-900 dark:text-white">TaskManager</span>
+          <span className="text-xl font-bold text-gray-900 dark:text-white hidden sm:inline">TaskManager</span>
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <StatusIndicator />
           {isAuthenticated ? (
             <>
@@ -61,9 +61,13 @@ const Navbar = () => {
               </span>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm bg-dark-surface text-gray-600 dark:text-gray-300 rounded-lg hover:bg-red-600/20 hover:text-red-400 transition-all duration-200 border border-dark-border"
+                className="p-2 sm:px-4 sm:py-2 text-sm bg-dark-surface text-gray-600 dark:text-gray-300 rounded-lg hover:bg-red-600/20 hover:text-red-400 transition-all duration-200 border border-dark-border"
+                title="Logout"
               >
-                Logout
+                <svg className="w-5 h-5 sm:hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span className="hidden sm:inline">Logout</span>
               </button>
             </>
           ) : (

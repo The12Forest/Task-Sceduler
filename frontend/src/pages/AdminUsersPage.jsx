@@ -121,7 +121,82 @@ const AdminUsersPage = () => {
         <p className="text-gray-500 text-center py-12">No users found</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          {/* Mobile card layout */}
+          <div className="md:hidden space-y-3">
+            {users.map((u) => {
+              const disabled = actionLoading === u._id;
+              return (
+                <div key={u._id} className="bg-dark-card border border-dark-border rounded-xl p-4 space-y-3">
+                  {/* User info row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-white font-medium truncate">{u.name}</p>
+                      <p className="text-gray-500 text-xs truncate">{u.email}</p>
+                    </div>
+                    <select
+                      value={u.role}
+                      onChange={(e) => handleRoleChange(u, e.target.value)}
+                      disabled={disabled}
+                      className={`text-xs font-medium px-2 py-1 rounded-md border bg-transparent cursor-pointer flex-shrink-0 ${roleBadge[u.role]} disabled:opacity-50`}
+                    >
+                      <option value="user">user</option>
+                      <option value="moderator">moderator</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </div>
+
+                  {/* Status badges */}
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {u.isActive ? (
+                      <span className="text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">Active</span>
+                    ) : (
+                      <span className="text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Disabled</span>
+                    )}
+                    {u.isVerified === false && (
+                      <span className="text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full">Unverified</span>
+                    )}
+                    {u.twoFactorEnabled && (
+                      <span className="text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">2FA On</span>
+                    )}
+                    <span className="text-gray-500">{u.totalTasks ?? 0} tasks</span>
+                  </div>
+
+                  {/* Actions row — stacked below */}
+                  <div className="flex items-center gap-1 pt-2 border-t border-dark-border/50 flex-wrap">
+                    <button onClick={() => handleToggleActive(u)} disabled={disabled} title={u.isActive ? 'Disable' : 'Enable'} className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-white transition-colors disabled:opacity-50">
+                      {u.isActive ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      )}
+                    </button>
+                    <button onClick={() => handleForceReset(u)} disabled={disabled} title="Force password reset" className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-yellow-400 transition-colors disabled:opacity-50">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                    </button>
+                    {!u.isVerified && (
+                      <button onClick={() => handleVerifyUser(u)} disabled={disabled} title="Verify email" className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-green-400 transition-colors disabled:opacity-50">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" /></svg>
+                      </button>
+                    )}
+                    {u.twoFactorEnabled && (
+                      <button onClick={() => handleDisable2FA(u)} disabled={disabled} title="Disable 2FA" className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-orange-400 transition-colors disabled:opacity-50">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                      </button>
+                    )}
+                    <button onClick={() => handleImpersonate(u)} disabled={disabled} title="Impersonate" className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-primary-400 transition-colors disabled:opacity-50">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    </button>
+                    <button onClick={() => handleDelete(u)} disabled={disabled} title="Delete" className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50 ml-auto">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Desktop table layout */}
+          <table className="w-full text-left text-sm hidden md:table">
             <thead>
               <tr className="border-b border-dark-border text-gray-400">
                 <th className="py-3 px-2">User</th>
