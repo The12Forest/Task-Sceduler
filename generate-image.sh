@@ -4,16 +4,44 @@ set -euo pipefail
 IMAGE_NAME="task-scheduler"
 REGISTRY="ghcr.io"
 
+# ── Check if already logged in to ghcr.io ────────────────────────────────────
+DOCKER_CONFIG="${DOCKER_CONFIG:-${HOME}/.docker}"
+ALREADY_LOGGED_IN=false
+GITHUB_USER=""
+
+if command -v jq &>/dev/null && [ -f "${DOCKER_CONFIG}/config.json" ]; then
+  STORED_USER=$(jq -r '.auths["ghcr.io"].Username // empty' "${DOCKER_CONFIG}/config.json" 2>/dev/null || true)
+  # Some credential helpers don't store inline; fall back to credsStore lookup
+  if [ -z "${STORED_USER}" ]; then
+    CREDS_STORE=$(jq -r '.credsStore // empty' "${DOCKER_CONFIG}/config.json" 2>/dev/null || true)
+    if [ -n "${CREDS_STORE}" ] && command -v "docker-credential-${CREDS_STORE}" &>/dev/null; then
+      STORED_USER=$(echo "ghcr.io" | "docker-credential-${CREDS_STORE}" get 2>/dev/null | jq -r '.Username // empty' 2>/dev/null || true)
+    fi
+  fi
+  if [ -n "${STORED_USER}" ]; then
+    GITHUB_USER="${STORED_USER}"
+    ALREADY_LOGGED_IN=true
+    echo "✓ Already logged in to ${REGISTRY} as ${GITHUB_USER}"
+  fi
+fi
+
 # ── Prompt for inputs ─────────────────────────────────────────────────────────
-read -rp "GitHub username: " GITHUB_USER
+if [ "${ALREADY_LOGGED_IN}" = false ]; then
+  read -rp "GitHub username: " GITHUB_USER
+  read -rsp "GitHub Personal Access Token (write:packages scope): " CR_PAT
+  echo ""
+  if [ -z "${GITHUB_USER}" ] || [ -z "${CR_PAT}" ]; then
+    echo "ERROR: username and token are required."
+    exit 1
+  fi
+fi
+
 read -rp "Image version (e.g. 1.0.0): " VERSION
 read -rp "Dockerfile path [./Dockerfile]: " DOCKERFILE_INPUT
 DOCKERFILE="${DOCKERFILE_INPUT:-./Dockerfile}"
-read -rsp "GitHub Personal Access Token (write:packages scope): " CR_PAT
-echo ""
 
-if [ -z "${GITHUB_USER}" ] || [ -z "${VERSION}" ] || [ -z "${CR_PAT}" ]; then
-  echo "ERROR: username, version, and token are all required."
+if [ -z "${VERSION}" ]; then
+  echo "ERROR: version is required."
   exit 1
 fi
 
@@ -24,9 +52,11 @@ fi
 
 FULL_IMAGE="${REGISTRY}/${GITHUB_USER}/${IMAGE_NAME}"
 
-# ── Login to GitHub Container Registry ───────────────────────────────────────
-echo "→ Logging in to ${REGISTRY} as ${GITHUB_USER}..."
-echo "${CR_PAT}" | docker login "${REGISTRY}" -u "${GITHUB_USER}" --password-stdin
+# ── Login to GitHub Container Registry (only if needed) ──────────────────────
+if [ "${ALREADY_LOGGED_IN}" = false ]; then
+  echo "→ Logging in to ${REGISTRY} as ${GITHUB_USER}..."
+  echo "${CR_PAT}" | docker login "${REGISTRY}" -u "${GITHUB_USER}" --password-stdin
+fi
 
 # ── Build ─────────────────────────────────────────────────────────────────────
 echo "→ Building ${FULL_IMAGE}:${VERSION} (also tagging as latest)..."
