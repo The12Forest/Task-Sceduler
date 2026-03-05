@@ -172,7 +172,7 @@ const WelcomePage = () => {
           </p>
 
           <a
-            href="https://github.com"
+            href="https://github.com/The12Forest/Task-Sceduler"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-dark-card border border-dark-border text-gray-300 rounded-xl font-semibold hover:bg-dark-surface hover:text-white transition-all duration-300"
