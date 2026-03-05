@@ -9,19 +9,36 @@ DOCKER_CONFIG="${DOCKER_CONFIG:-${HOME}/.docker}"
 ALREADY_LOGGED_IN=false
 GITHUB_USER=""
 
-if command -v jq &>/dev/null && [ -f "${DOCKER_CONFIG}/config.json" ]; then
-  STORED_USER=$(jq -r '.auths["ghcr.io"].Username // empty' "${DOCKER_CONFIG}/config.json" 2>/dev/null || true)
-  # Some credential helpers don't store inline; fall back to credsStore lookup
-  if [ -z "${STORED_USER}" ]; then
-    CREDS_STORE=$(jq -r '.credsStore // empty' "${DOCKER_CONFIG}/config.json" 2>/dev/null || true)
-    if [ -n "${CREDS_STORE}" ] && command -v "docker-credential-${CREDS_STORE}" &>/dev/null; then
-      STORED_USER=$(echo "ghcr.io" | "docker-credential-${CREDS_STORE}" get 2>/dev/null | jq -r '.Username // empty' 2>/dev/null || true)
+if [ -f "${DOCKER_CONFIG}/config.json" ]; then
+  # Check for ghcr.io entry in auths (works without jq)
+  if grep -q '"ghcr.io"' "${DOCKER_CONFIG}/config.json" 2>/dev/null; then
+    # Try to extract username from the base64 auth field (format: user:token)
+    AUTH_B64=$(grep -A2 '"ghcr.io"' "${DOCKER_CONFIG}/config.json" | grep '"auth"' | sed 's/.*"auth"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' 2>/dev/null || true)
+    if [ -n "${AUTH_B64}" ]; then
+      GITHUB_USER=$(echo "${AUTH_B64}" | base64 -d 2>/dev/null | cut -d: -f1 || true)
+    fi
+    # If username found, we're logged in
+    if [ -n "${GITHUB_USER}" ]; then
+      ALREADY_LOGGED_IN=true
+      echo "✓ Already logged in to ${REGISTRY} as ${GITHUB_USER}"
     fi
   fi
-  if [ -n "${STORED_USER}" ]; then
-    GITHUB_USER="${STORED_USER}"
-    ALREADY_LOGGED_IN=true
-    echo "✓ Already logged in to ${REGISTRY} as ${GITHUB_USER}"
+  
+  # Fallback: check credential helpers (credsStore / credHelpers)
+  if [ "${ALREADY_LOGGED_IN}" = false ]; then
+    CREDS_STORE=$(grep '"credsStore"' "${DOCKER_CONFIG}/config.json" 2>/dev/null | sed 's/.*"credsStore"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || true)
+    if [ -z "${CREDS_STORE}" ]; then
+      # Check credHelpers for ghcr.io specifically
+      CREDS_STORE=$(sed -n '/"credHelpers"/,/}/p' "${DOCKER_CONFIG}/config.json" 2>/dev/null | grep '"ghcr.io"' | sed 's/.*"ghcr.io"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || true)
+    fi
+    if [ -n "${CREDS_STORE}" ] && command -v "docker-credential-${CREDS_STORE}" &>/dev/null; then
+      STORED_USER=$(echo "ghcr.io" | "docker-credential-${CREDS_STORE}" get 2>/dev/null | grep -o '"Username"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"Username"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' || true)
+      if [ -n "${STORED_USER}" ]; then
+        GITHUB_USER="${STORED_USER}"
+        ALREADY_LOGGED_IN=true
+        echo "✓ Already logged in to ${REGISTRY} as ${GITHUB_USER}"
+      fi
+    fi
   fi
 fi
 
