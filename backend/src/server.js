@@ -23,10 +23,10 @@ const app = express();
 // Security headers
 app.use(helmet());
 
-// CORS
+// CORS — in production behind Nginx, allow same-origin; in dev, allow Vite dev server
 app.use(
   cors({
-    origin: config.clientUrl,
+    origin: process.env.NODE_ENV === 'production' ? true : config.clientUrl,
     credentials: true,
   })
 );
@@ -39,6 +39,11 @@ app.use(cookieParser());
 // Static uploads
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
+// Health check — before maintenance guard so monitoring always works
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Maintenance mode guard (before routes, after body parsers)
 app.use(maintenanceGuard);
 
@@ -48,11 +53,6 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingsRoutes);
-
-// Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 // System status: is the system claimed (has any admin)?
 app.get('/api/system-status', async (_req, res) => {
@@ -89,8 +89,23 @@ const initSystemConfig = async () => {
   }
 };
 
+// ── Preflight: validate critical environment variables ──
+const preflight = () => {
+  const required = ['MONGO_URI', 'JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+    console.error('The server cannot start without these. Check your .env or Docker environment.');
+    process.exit(1);
+  }
+  if (process.env.JWT_ACCESS_SECRET === 'change_me_jwt_secret' || process.env.JWT_REFRESH_SECRET === 'change_me_refresh_secret') {
+    console.warn('WARNING: Using default JWT secrets. Change them in production!');
+  }
+};
+
 // Start server
 const start = async () => {
+  preflight();
   await connectDB();
   await initSystemConfig();
 

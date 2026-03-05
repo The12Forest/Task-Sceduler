@@ -18,6 +18,29 @@ const { sendVerificationEmail, sendOtpEmail } = require('../services/emailServic
 
 const config = require('../config');
 
+// ── DRY Helper: set refresh cookie on response ──
+const setRefreshCookie = (res, refreshToken) => {
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: getExpiry().refreshMs,
+  });
+};
+
+// ── DRY Helper: format user object for API responses ──
+const formatUser = (user, overrides = {}) => ({
+  id: user._id,
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  mustChangePassword: user.mustChangePassword || false,
+  twoFactorEnabled: user.twoFactorEnabled || false,
+  preferences: user.preferences,
+  ...overrides,
+});
+
 /**
  * POST /api/auth/register
  * First-In Admin: If no users exist, the first registrant becomes admin.
@@ -32,65 +55,66 @@ const register = asyncHandler(async (req, res) => {
   }
 
   // Check if this is the FIRST user (system unclaimed)
-  const userCount = await User.countDocuments();
+  // Use atomic countDocuments + session to prevent race condition where
+  // two concurrent requests both see 0 users and both become admin.
+  const session = await require('mongoose').startSession();
+  try {
+    session.startTransaction();
+    const userCount = await User.countDocuments().session(session);
 
-  if (userCount === 0) {
-    // ── First-In Admin Logic ──
-    // If ADMIN_EMAIL env is set, the first registrant's email must match
-    const adminEmail = config.adminEmail;
-    if (adminEmail && email.toLowerCase() !== adminEmail.toLowerCase()) {
-      throw new AppError(
-        `This system requires the first account to use the designated admin email.`,
-        403
+    if (userCount === 0) {
+      // ── First-In Admin Logic ──
+      const adminEmail = config.adminEmail;
+      if (adminEmail && email.toLowerCase() !== adminEmail.toLowerCase()) {
+        await session.abortTransaction();
+        session.endSession();
+        throw new AppError(
+          `This system requires the first account to use the designated admin email.`,
+          403
+        );
+      }
+
+      const [admin] = await User.create(
+        [{
+          name,
+          email,
+          password,
+          role: 'admin',
+          isVerified: true,
+          mustChangePassword: true,
+        }],
+        { session }
       );
+
+      await TodoList.create([{ userId: admin._id, name: 'My Tasks', isDefault: true }], { session });
+
+      const accessToken = generateAccessToken(admin._id);
+      const refreshToken = generateRefreshToken(admin._id);
+
+      await User.findByIdAndUpdate(admin._id, {
+        $set: { refreshTokens: [refreshToken], lastLoginAt: new Date(), lastLoginIp: req.ip || null },
+      }, { session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      setRefreshCookie(res, refreshToken);
+
+      return res.status(201).json({
+        success: true,
+        isFirstUser: true,
+        accessToken,
+        user: formatUser(admin, { mustChangePassword: true, twoFactorEnabled: false }),
+        message: 'Welcome! You are the system administrator. Please change your password.',
+      });
     }
 
-    const admin = await User.create({
-      name,
-      email,
-      password,
-      role: 'admin',
-      isVerified: true,
-      mustChangePassword: true,
-    });
-
-    // Auto-create default list
-    await TodoList.create({ userId: admin._id, name: 'My Tasks', isDefault: true });
-
-    // Auto-login: issue tokens immediately
-    const accessToken = generateAccessToken(admin._id);
-    const refreshToken = generateRefreshToken(admin._id);
-
-    admin.refreshTokens = [refreshToken];
-    admin.lastLoginAt = new Date();
-    admin.lastLoginIp = req.ip || null;
-    await User.findByIdAndUpdate(admin._id, {
-      $set: { refreshTokens: [refreshToken], lastLoginAt: new Date(), lastLoginIp: req.ip || null },
-    });
-
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: getExpiry().refreshMs,
-    });
-
-    return res.status(201).json({
-      success: true,
-      isFirstUser: true,
-      accessToken,
-      user: {
-        id: admin._id,
-        name: admin.name,
-        email: admin.email,
-        role: admin.role,
-        mustChangePassword: true,
-        twoFactorEnabled: false,
-        preferences: admin.preferences,
-      },
-      message: 'Welcome! You are the system administrator. Please change your password.',
-    });
+    await session.commitTransaction();
+    session.endSession();
+  } catch (err) {
+    if (session.inTransaction()) await session.abortTransaction();
+    session.endSession();
+    throw err;
   }
 
   // ── Subsequent Users: Normal Registration ──
@@ -218,26 +242,12 @@ const login = asyncHandler(async (req, res) => {
   userWithTokens.lockedUntil = null;
   await userWithTokens.save();
 
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: getExpiry().refreshMs,
-  });
+  setRefreshCookie(res, refreshToken);
 
   res.json({
     success: true,
     accessToken,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      mustChangePassword: user.mustChangePassword || false,
-      twoFactorEnabled: false,
-      preferences: user.preferences,
-    },
+    user: formatUser(user, { twoFactorEnabled: false }),
   });
 });
 
@@ -297,27 +307,12 @@ const verifyOtp = asyncHandler(async (req, res) => {
 
   await user.save();
 
-  // Set refresh token as httpOnly cookie
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: getExpiry().refreshMs,
-  });
+  setRefreshCookie(res, refreshToken);
 
   res.json({
     success: true,
     accessToken,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      mustChangePassword: user.mustChangePassword || false,
-      twoFactorEnabled: user.twoFactorEnabled || false,
-      preferences: user.preferences,
-    },
+    user: formatUser(user),
   });
 });
 
@@ -346,13 +341,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   user.refreshTokens.push(newRefreshToken);
   await user.save();
 
-  res.cookie('refreshToken', newRefreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: getExpiry().refreshMs,
-  });
+  setRefreshCookie(res, newRefreshToken);
 
   res.json({ success: true, accessToken: newAccessToken });
 });

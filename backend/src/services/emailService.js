@@ -2,15 +2,18 @@ const nodemailer = require('nodemailer');
 const config = require('../config');
 const SystemConfig = require('../models/SystemConfig');
 
-/**
- * Create a nodemailer transporter from SystemConfig or fall back to .env values.
- * A new transporter is created per send to pick up admin SMTP changes immediately.
- */
+/* ── Cached transporter (refreshes every 60 s or when SMTP config changes) ── */
+let _cached = null;
+let _cacheExpiry = 0;
+const CACHE_TTL = 60_000; // 60 seconds
+
 const getTransporter = async () => {
+  if (_cached && Date.now() < _cacheExpiry) return _cached;
+
   try {
     const cfg = await SystemConfig.getConfigWithSecrets();
     if (cfg.smtpHost && cfg.smtpUser) {
-      return {
+      _cached = {
         transporter: nodemailer.createTransport({
           host: cfg.smtpHost,
           port: cfg.smtpPort || 587,
@@ -21,11 +24,13 @@ const getTransporter = async () => {
         from: `"${cfg.smtpFromName || 'Task Manager'}" <${cfg.smtpFromEmail || cfg.smtpUser}>`,
         appName: cfg.appName || 'Task Manager',
       };
+      _cacheExpiry = Date.now() + CACHE_TTL;
+      return _cached;
     }
   } catch { /* fall through to .env */ }
 
   // Fallback to .env values
-  return {
+  _cached = {
     transporter: nodemailer.createTransport({
       host: config.smtp.host,
       port: config.smtp.port,
@@ -36,6 +41,8 @@ const getTransporter = async () => {
     from: `"Task Manager" <${config.smtp.from}>`,
     appName: 'Task Manager',
   };
+  _cacheExpiry = Date.now() + CACHE_TTL;
+  return _cached;
 };
 
 /**

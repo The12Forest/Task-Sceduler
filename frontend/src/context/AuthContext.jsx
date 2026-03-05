@@ -99,7 +99,7 @@ export const AuthProvider = ({ children }) => {
       // ignore
     }
     localStorage.removeItem('accessToken');
-    localStorage.removeItem('adminToken');
+    sessionStorage.removeItem('adminToken');
     localStorage.removeItem('userPrefs');
     setUser(null);
     applyTheme('dark'); // Reset to default
@@ -115,7 +115,7 @@ export const AuthProvider = ({ children }) => {
   const impersonate = useCallback(async (userId) => {
     // Save current admin token
     const currentToken = localStorage.getItem('accessToken');
-    localStorage.setItem('adminToken', currentToken);
+    sessionStorage.setItem('adminToken', currentToken);
 
     const res = await impersonateAPI(userId);
     localStorage.setItem('accessToken', res.data.accessToken);
@@ -128,15 +128,15 @@ export const AuthProvider = ({ children }) => {
     try {
       const res = await stopImpersonateAPI();
       localStorage.setItem('accessToken', res.data.accessToken);
-      localStorage.removeItem('adminToken');
+      sessionStorage.removeItem('adminToken');
       setUser(res.data.user);
       return res.data;
     } catch {
       // Fallback: restore saved admin token
-      const adminToken = localStorage.getItem('adminToken');
+      const adminToken = sessionStorage.getItem('adminToken');
       if (adminToken) {
         localStorage.setItem('accessToken', adminToken);
-        localStorage.removeItem('adminToken');
+        sessionStorage.removeItem('adminToken');
         const meRes = await getMe();
         setUser(meRes.data.user);
       }

@@ -163,7 +163,21 @@ const syncTasks = asyncHandler(async (req, res) => {
 
   if (docs.length === 0) throw new AppError('No valid tasks to sync (invalid or missing listId)', 400);
 
-  const inserted = await Task.insertMany(docs);
+  // Deduplicate: skip tasks that already exist (same name + listId within last 24h)
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const existing = await Task.find({
+    userId: req.user.id,
+    createdAt: { $gte: cutoff },
+  }).select('name listId').lean();
+
+  const existingKeys = new Set(existing.map((t) => `${t.name}::${t.listId}`));
+  const unique = docs.filter((d) => !existingKeys.has(`${d.name}::${d.listId}`));
+
+  if (unique.length === 0) {
+    return res.json({ success: true, count: 0, tasks: [], message: 'All tasks already exist' });
+  }
+
+  const inserted = await Task.insertMany(unique);
   res.status(201).json({ success: true, count: inserted.length, tasks: inserted });
 });
 
