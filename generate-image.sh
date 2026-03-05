@@ -50,12 +50,27 @@ if [ ! -f "${DOCKERFILE}" ]; then
   exit 1
 fi
 
-FULL_IMAGE="${REGISTRY}/${GITHUB_USER}/${IMAGE_NAME}"
+GITHUB_USER_LOWER=$(echo "${GITHUB_USER}" | tr '[:upper:]' '[:lower:]')
+FULL_IMAGE="${REGISTRY}/${GITHUB_USER_LOWER}/${IMAGE_NAME}"
 
 # ── Login to GitHub Container Registry (only if needed) ──────────────────────
 if [ "${ALREADY_LOGGED_IN}" = false ]; then
   echo "→ Logging in to ${REGISTRY} as ${GITHUB_USER}..."
-  echo "${CR_PAT}" | docker login "${REGISTRY}" -u "${GITHUB_USER}" --password-stdin
+  if ! echo "${CR_PAT}" | docker login "${REGISTRY}" -u "${GITHUB_USER}" --password-stdin; then
+    echo ""
+    echo "ERROR: Login to ${REGISTRY} failed. Common causes:"
+    echo ""
+    echo "  1. Wrong token type — use a classic PAT (not fine-grained):"
+    echo "     https://github.com/settings/tokens/new?scopes=write:packages,read:packages,delete:packages"
+    echo ""
+    echo "  2. Missing scopes — the token must have:"
+    echo "     ✓ write:packages"
+    echo "     ✓ read:packages"
+    echo "     ✓ repo  (required for private repos)"
+    echo ""
+    echo "  3. Token expired or copied incorrectly — regenerate it."
+    exit 1
+  fi
 fi
 
 # ── Build ─────────────────────────────────────────────────────────────────────
