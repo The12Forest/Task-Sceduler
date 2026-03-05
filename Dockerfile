@@ -1,5 +1,6 @@
 # ── Stage 1: Build Frontend ──
 FROM node:20-alpine AS frontend-build
+LABEL org.opencontainers.image.source=https://github.com/codityco/003-how-to-dockerise-a-laravel-project
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
@@ -8,6 +9,7 @@ RUN npm run build
 
 # ── Stage 2: Install Backend Dependencies ──
 FROM node:20-alpine AS backend-build
+LABEL org.opencontainers.image.source=https://github.com/codityco/003-how-to-dockerise-a-laravel-project
 WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci --omit=dev
@@ -15,7 +17,7 @@ COPY backend/ ./
 
 # ── Stage 3: Production (Nginx + Node.js) ──
 FROM node:20-alpine
-
+LABEL org.opencontainers.image.source=https://github.com/codityco/003-how-to-dockerise-a-laravel-project
 # Install Nginx and supervisor-like tools
 RUN apk add --no-cache nginx
 
