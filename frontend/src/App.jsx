@@ -36,14 +36,14 @@ const RootRoute = () => {
 };
 
 /**
- * Layout wrapper shared by all authenticated pages.
+ * Shared layout wrapper for authenticated pages.
  * Wraps with ListProvider + TaskProvider so state persists across navigation.
  */
-const AuthenticatedLayout = () => {
+const AppLayout = ({ guard: Guard }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <ProtectedRoute>
+    <Guard>
       <ListProvider>
         <TaskProvider>
           <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -54,29 +54,7 @@ const AuthenticatedLayout = () => {
           </main>
         </TaskProvider>
       </ListProvider>
-    </ProtectedRoute>
-  );
-};
-
-/**
- * Layout for admin pages: sidebar + admin route guard.
- */
-const AdminLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  return (
-    <AdminRoute>
-      <ListProvider>
-        <TaskProvider>
-          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-          <main className="md:pl-64 min-h-[calc(100vh-64px)]">
-            <SidebarContext.Provider value={() => setSidebarOpen(true)}>
-              <Outlet />
-            </SidebarContext.Provider>
-          </main>
-        </TaskProvider>
-      </ListProvider>
-    </AdminRoute>
+    </Guard>
   );
 };
 
@@ -103,15 +81,15 @@ const App = () => {
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-          {/* Protected routes share providers via AuthenticatedLayout */}
-          <Route element={<AuthenticatedLayout />}>
+          {/* Protected routes share providers via AppLayout */}
+          <Route element={<AppLayout guard={ProtectedRoute} />}>
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/completed" element={<CompletedTasksPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
 
           {/* Admin routes */}
-          <Route element={<AdminLayout />}>
+          <Route element={<AppLayout guard={AdminRoute} />}>
             <Route path="/admin" element={<AdminDashboardPage />} />
             <Route path="/admin/settings" element={<AdminSettingsPage />} />
             <Route path="/admin/users" element={<AdminUsersPage />} />

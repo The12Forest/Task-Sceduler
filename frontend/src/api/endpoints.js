@@ -6,7 +6,6 @@ export const registerUser = (data) => api.post('/auth/register', data);
 export const loginUser = (data) => api.post('/auth/login', data);
 export const verifyOtp = (data) => api.post('/auth/verify-otp', data);
 export const verifyEmail = (token) => api.get(`/auth/verify-email?token=${token}`);
-export const refreshToken = () => api.post('/auth/refresh');
 export const logoutUser = () => api.post('/auth/logout');
 export const getMe = () => api.get('/auth/me');
 export const changePassword = (data) => api.put('/auth/change-password', data);
@@ -43,8 +42,6 @@ export const fetchTasks = (params = {}) => {
   return api.get(qs ? `/tasks?${qs}` : '/tasks');
 };
 
-export const fetchTask = (id) => api.get(`/tasks/${id}`);
-
 export const createTask = (data) => {
   if (data instanceof FormData) {
     return api.post('/tasks', data, {
@@ -80,7 +77,6 @@ export const fetchAdminUsers = (params = {}) => {
   const qs = query.toString();
   return api.get(qs ? `/admin/users?${qs}` : '/admin/users');
 };
-export const fetchAdminUser = (id) => api.get(`/admin/users/${id}`);
 export const toggleUserActive = (id) => api.put(`/admin/users/${id}/toggle-active`);
 export const changeUserRole = (id, role) => api.put(`/admin/users/${id}/role`, { role });
 export const forcePasswordReset = (id) => api.post(`/admin/users/${id}/force-password-reset`);
@@ -98,9 +94,4 @@ export const fetchAuditLogs = (params = {}) => {
   const qs = query.toString();
   return api.get(qs ? `/admin/audit-logs?${qs}` : '/admin/audit-logs');
 };
-export const exportData = (type) => api.get(`/admin/export/${type}`);
-export const cleanupCompleted = (days) => api.delete(`/admin/cleanup/completed?days=${days}`);
 
-// ──── Settings ────
-
-export const fetchPublicConfig = () => api.get('/settings/public');

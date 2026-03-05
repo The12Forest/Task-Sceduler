@@ -43,6 +43,10 @@ const taskSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    fileSize: {
+      type: Number,
+      default: 0,
+    },
     dueDate: {
       type: Date,
       default: null,

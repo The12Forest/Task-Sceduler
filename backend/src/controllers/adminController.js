@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const User = require('../models/User');
 const Task = require('../models/Task');
 const TodoList = require('../models/TodoList');
@@ -41,7 +40,6 @@ const audit = async (adminId, action, category, opts = {}) => {
 const getStats = asyncHandler(async (req, res) => {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekAgo = new Date(todayStart - 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysAgo = new Date(todayStart - 30 * 24 * 60 * 60 * 1000);
 
   const [
@@ -268,9 +266,13 @@ const deleteUser = asyncHandler(async (req, res) => {
     throw new AppError('Cannot delete your own account', 400);
   }
 
-  // Cascade delete
+  // Full cascade hard-delete — purge all user data so email is immediately reusable
   await Task.deleteMany({ userId: user._id });
   await TodoList.deleteMany({ userId: user._id });
+  await AuditLog.updateMany(
+    { affectedUserId: user._id },
+    { $set: { affectedUserId: null, details: `[deleted] ${user.email}` } }
+  );
   await User.deleteOne({ _id: user._id });
 
   await audit(req.user.id, 'delete_user', 'user', {
@@ -340,7 +342,19 @@ const adminDisable2FA = asyncHandler(async (req, res) => {
  */
 const getSystemConfig = asyncHandler(async (req, res) => {
   const cfg = await SystemConfig.getConfig();
-  res.json({ success: true, config: cfg });
+
+  // Expose read-only .env values so the admin panel shows them
+  const envOverrides = {
+    adminEmail: config.adminEmail || null,
+    clientUrl: config.clientUrl || null,
+    smtpHostEnv: config.smtp.host || null,
+    smtpPortEnv: config.smtp.port || null,
+    smtpUserEnv: config.smtp.user || null,
+    smtpFromEnv: config.smtp.from || null,
+    nodeEnv: process.env.NODE_ENV || 'development',
+  };
+
+  res.json({ success: true, config: cfg, envOverrides });
 });
 
 /**
@@ -364,6 +378,7 @@ const updateSystemConfig = asyncHandler(async (req, res) => {
     'accessTokenExpiryMinutes', 'refreshTokenExpiryDays', 'forceLogoutOnPasswordChange',
     'maxSessionsPerUser', 'maxFailedLoginAttempts', 'lockoutDurationMinutes', 'enableBruteForceProtection',
     'defaultPriority', 'allowFileUploads', 'allowedFileTypes', 'maxTasksPerUser', 'maxListsPerUser',
+    'maxStoragePerUserMB',
     'enableOverdueNotifications', 'reminderOffsetMinutes',
     'enableBrowserNotifications', 'enableEmailReminders', 'enableDailySummary', 'enableWeeklySummary',
     'quietHoursStart', 'quietHoursEnd',

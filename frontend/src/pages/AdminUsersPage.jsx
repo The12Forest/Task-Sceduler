@@ -36,7 +36,7 @@ const AdminUsersPage = () => {
     try {
       const res = await fetchAdminUsers({ page, limit, search });
       setUsers(res.data.users);
-      setTotal(res.data.total);
+      setTotal(res.data.pagination?.total ?? 0);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load users');
     } finally {
@@ -96,7 +96,7 @@ const AdminUsersPage = () => {
           </svg>
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white">User Management</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">User Management</h1>
           <p className="text-gray-400 mt-1">{total} total users</p>
         </div>
       </div>
@@ -161,7 +161,7 @@ const AdminUsersPage = () => {
                     </td>
 
                     {/* Tasks */}
-                    <td className="py-3 px-2 text-gray-400 hidden md:table-cell">{u.taskCount ?? '—'}</td>
+                    <td className="py-3 px-2 text-gray-400 hidden md:table-cell">{u.totalTasks ?? '—'}</td>
 
                     {/* Status */}
                     <td className="py-3 px-2 hidden md:table-cell">
@@ -200,7 +200,7 @@ const AdminUsersPage = () => {
                           onClick={() => handleToggleActive(u)}
                           disabled={disabled}
                           title={u.isActive ? 'Disable user' : 'Enable user'}
-                          className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                          className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-white transition-colors disabled:opacity-50"
                         >
                           {u.isActive ? (
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
@@ -214,7 +214,7 @@ const AdminUsersPage = () => {
                           onClick={() => handleForceReset(u)}
                           disabled={disabled}
                           title="Force password reset"
-                          className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-yellow-400 transition-colors disabled:opacity-50"
+                          className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-yellow-400 transition-colors disabled:opacity-50"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
                         </button>
@@ -225,7 +225,7 @@ const AdminUsersPage = () => {
                             onClick={() => handleVerifyUser(u)}
                             disabled={disabled}
                             title="Verify user email"
-                            className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-green-400 transition-colors disabled:opacity-50"
+                            className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-green-400 transition-colors disabled:opacity-50"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" /></svg>
                           </button>
@@ -237,7 +237,7 @@ const AdminUsersPage = () => {
                             onClick={() => handleDisable2FA(u)}
                             disabled={disabled}
                             title="Disable 2FA"
-                            className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-orange-400 transition-colors disabled:opacity-50"
+                            className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-orange-400 transition-colors disabled:opacity-50"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
                           </button>
@@ -248,7 +248,7 @@ const AdminUsersPage = () => {
                           onClick={() => handleImpersonate(u)}
                           disabled={disabled}
                           title="Impersonate user"
-                          className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-primary-400 transition-colors disabled:opacity-50"
+                          className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-primary-400 transition-colors disabled:opacity-50"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
@@ -258,7 +258,7 @@ const AdminUsersPage = () => {
                           onClick={() => handleDelete(u)}
                           disabled={disabled}
                           title="Delete user"
-                          className="p-1.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                          className="p-2.5 rounded-lg hover:bg-dark-surface text-gray-400 hover:text-red-400 transition-colors disabled:opacity-50"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>

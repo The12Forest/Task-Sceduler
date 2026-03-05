@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 /* ─── Section Definitions ────────────────────────────────────── */
 const sections = [
   { id: 'general', label: 'General', icon: '⚙️' },
+  { id: 'environment', label: 'Environment', icon: '🌐' },
   { id: 'server', label: 'Server & Runtime', icon: '🖥️' },
   { id: 'smtp', label: 'SMTP / Email', icon: '✉️' },
   { id: 'auth', label: 'Authentication', icon: '🔐' },
@@ -28,6 +29,7 @@ const fieldConfigs = {
     { key: 'supportEmail', label: 'Support Email', type: 'text', placeholder: 'support@example.com' },
     { key: 'footerText', label: 'Footer Text', type: 'text' },
   ],
+  environment: [], // Rendered specially — not using fieldConfigs
   server: [
     { key: 'serverPort', label: 'Port', type: 'number', restart: true },
     { key: 'baseUrl', label: 'Base URL', type: 'text', restart: true },
@@ -70,6 +72,7 @@ const fieldConfigs = {
     { key: 'allowedFileTypes', label: 'Allowed File Types', type: 'tags', help: 'Comma-separated extensions' },
     { key: 'maxTasksPerUser', label: 'Max Tasks Per User', type: 'number' },
     { key: 'maxListsPerUser', label: 'Max Lists Per User', type: 'number' },
+    { key: 'maxStoragePerUserMB', label: 'Max Storage Per User (MB)', type: 'number' },
     { key: 'enableOverdueNotifications', label: 'Overdue Notifications', type: 'toggle' },
     { key: 'reminderOffsetMinutes', label: 'Reminder Offset (min)', type: 'number' },
   ],
@@ -155,6 +158,7 @@ const FieldTags = ({ value, onChange, help }) => {
 const AdminSettingsPage = () => {
   const openSidebar = useSidebarOpen();
   const [config, setConfig] = useState(null);
+  const [envOverrides, setEnvOverrides] = useState({});
   const [dirty, setDirty] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -166,6 +170,7 @@ const AdminSettingsPage = () => {
     try {
       const res = await fetchSystemConfig();
       setConfig(res.data.config);
+      setEnvOverrides(res.data.envOverrides || {});
       setDirty({});
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load config');
@@ -195,6 +200,7 @@ const AdminSettingsPage = () => {
       // Refresh from server to ensure consistency
       const fresh = await fetchSystemConfig();
       setConfig(fresh.data.config);
+      setEnvOverrides(fresh.data.envOverrides || {});
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save settings');
     } finally {
@@ -240,7 +246,7 @@ const AdminSettingsPage = () => {
           </svg>
         </button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-white">System Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">System Settings</h1>
           <p className="text-gray-400 mt-1">Configure your TaskManager instance</p>
         </div>
         {dirtyCount > 0 && (
@@ -274,7 +280,30 @@ const AdminSettingsPage = () => {
 
       {/* Fields */}
       <div className="bg-dark-card border border-dark-border rounded-xl p-6 space-y-5">
-        {fields.map((f) => (
+        {/* Environment variables (read-only) */}
+        {activeSection === 'environment' && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-400 mb-4">
+              These values are set via <code className="bg-dark-surface px-1 rounded text-primary-400">.env</code> or Docker environment variables and cannot be changed from the UI.
+            </p>
+            {Object.entries(envOverrides).map(([key, value]) => (
+              <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="sm:w-56 flex-shrink-0">
+                  <label className="text-sm text-gray-300 font-medium">{key}</label>
+                </div>
+                <div className="flex-1">
+                  <div className="w-full bg-dark-surface border border-dark-border rounded-lg px-3 py-2 text-gray-400 text-sm">
+                    {value || <span className="italic text-gray-600">not set</span>}
+                  </div>
+                </div>
+                <span className="text-xs text-gray-600">read-only</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Regular editable fields */}
+        {activeSection !== 'environment' && fields.map((f) => (
           <div key={f.key} className="flex flex-col sm:flex-row sm:items-center gap-2">
             <div className="sm:w-56 flex-shrink-0">
               <label className="text-sm text-gray-300 font-medium">

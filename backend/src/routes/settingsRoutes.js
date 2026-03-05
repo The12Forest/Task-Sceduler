@@ -27,6 +27,8 @@ router.get(
         requireEmailVerification: cfg.requireEmailVerification,
         defaultPriority: cfg.defaultPriority,
         allowFileUploads: cfg.allowFileUploads,
+        maxUploadSizeMB: cfg.maxUploadSizeMB,
+        maxStoragePerUserMB: cfg.maxStoragePerUserMB,
         maxTasksPerUser: cfg.maxTasksPerUser,
         maxListsPerUser: cfg.maxListsPerUser,
         enableBrowserNotifications: cfg.enableBrowserNotifications,

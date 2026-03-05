@@ -50,7 +50,7 @@ const CompletedTasksPage = () => {
           </svg>
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white">Completed Tasks</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Completed Tasks</h1>
           <p className="text-gray-400 mt-1">
             {selectedList ? (
               <>

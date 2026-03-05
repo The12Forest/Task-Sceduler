@@ -2,6 +2,7 @@
 # Usage: docker compose up -d
 #
 # Copy .env.example to .env and fill in your values before starting.
+# Set EXTERNAL_PORT in .env (default: 8080)
 
 services:
   app:
@@ -9,7 +10,7 @@ services:
     container_name: taskmanager-app
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${EXTERNAL_PORT:-8080}:80"
     env_file:
       - .env
     environment:
@@ -26,13 +27,18 @@ services:
     image: mongo:7
     container_name: taskmanager-mongo
     restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: >-
+        mongosh --quiet --eval "
+          try { var s = rs.status(); if (s.ok) quit(0); else quit(1); }
+          catch(e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}); quit(1); }
+        "
+      interval: 5s
+      timeout: 10s
+      retries: 15
       start_period: 10s
     networks:
       - taskmanager

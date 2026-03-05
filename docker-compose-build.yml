@@ -1,5 +1,7 @@
 # docker-compose.yml — Build from local source
 # Usage: docker compose up -d --build
+#
+# Set EXTERNAL_PORT in .env or shell (default: 8080)
 
 services:
   app:
@@ -7,11 +9,11 @@ services:
     container_name: taskmanager-app
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "${EXTERNAL_PORT:-8080}:80"
     environment:
       - NODE_ENV=production
       - PORT=5000
-      - MONGO_URI=mongodb://mongo:27017/taskmanager
+      - MONGO_URI=mongodb://mongo:27017/taskmanager?replicaSet=rs0
       - JWT_ACCESS_SECRET=${JWT_ACCESS_SECRET:-change_me_jwt_secret}
       - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-change_me_refresh_secret}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-manuel@steka.ch}
@@ -33,13 +35,18 @@ services:
     image: mongo:7
     container_name: taskmanager-mongo
     restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: >-
+        mongosh --quiet --eval "
+          try { var s = rs.status(); if (s.ok) quit(0); else quit(1); }
+          catch(e) { rs.initiate({_id:'rs0',members:[{_id:0,host:'mongo:27017'}]}); quit(1); }
+        "
+      interval: 5s
+      timeout: 10s
+      retries: 15
       start_period: 10s
     networks:
       - taskmanager

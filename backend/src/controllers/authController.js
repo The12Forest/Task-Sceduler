@@ -1,10 +1,9 @@
-const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const TodoList = require('../models/TodoList');
 const SystemConfig = require('../models/SystemConfig');
 const { AppError } = require('../middlewares/errorHandler');
 const asyncHandler = require('../utils/asyncHandler');
-const { generateOtp, hashOtp } = require('../utils/otp');
+const { hashOtp } = require('../utils/otp');
 const { generateTotpSecret, verifyTotpToken, generateQrDataUrl } = require('../utils/totp');
 const {
   generateAccessToken,
@@ -12,34 +11,11 @@ const {
   generateVerificationToken,
   verifyAccessToken,
   verifyRefreshToken,
-  getExpiry,
 } = require('../services/tokenService');
-const { sendVerificationEmail, sendOtpEmail } = require('../services/emailService');
+const { sendVerificationEmail } = require('../services/emailService');
+const { setRefreshCookie, formatUser, issueSessionTokens } = require('../services/authSessionService');
 
 const config = require('../config');
-
-// ── DRY Helper: set refresh cookie on response ──
-const setRefreshCookie = (res, refreshToken) => {
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-    maxAge: getExpiry().refreshMs,
-  });
-};
-
-// ── DRY Helper: format user object for API responses ──
-const formatUser = (user, overrides = {}) => ({
-  id: user._id,
-  name: user.name,
-  email: user.email,
-  role: user.role,
-  mustChangePassword: user.mustChangePassword || false,
-  twoFactorEnabled: user.twoFactorEnabled || false,
-  preferences: user.preferences,
-  ...overrides,
-});
 
 /**
  * POST /api/auth/register
@@ -227,27 +203,15 @@ const login = asyncHandler(async (req, res) => {
   }
 
   // No 2FA — issue tokens directly
-  const maxSessions = sysConfig.maxSessionsPerUser || 5;
   const userWithTokens = await User.findById(user._id).select('+refreshTokens');
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
-
-  userWithTokens.refreshTokens.push(refreshToken);
-  if (userWithTokens.refreshTokens.length > maxSessions) {
-    userWithTokens.refreshTokens = userWithTokens.refreshTokens.slice(-maxSessions);
-  }
-  userWithTokens.lastLoginAt = new Date();
-  userWithTokens.lastLoginIp = req.ip || req.connection?.remoteAddress || null;
-  userWithTokens.failedLoginAttempts = 0;
-  userWithTokens.lockedUntil = null;
-  await userWithTokens.save();
-
-  setRefreshCookie(res, refreshToken);
+  const { accessToken, formattedUser } = await issueSessionTokens(
+    userWithTokens, req, res, { twoFactorEnabled: false }
+  );
 
   res.json({
     success: true,
     accessToken,
-    user: formatUser(user, { twoFactorEnabled: false }),
+    user: formattedUser,
   });
 });
 
@@ -287,32 +251,12 @@ const verifyOtp = asyncHandler(async (req, res) => {
     user.otp = { code: null, expiresAt: null };
   }
 
-  // Generate tokens
-  const accessToken = generateAccessToken(user._id);
-  const refreshToken = generateRefreshToken(user._id);
-
-  // Store refresh token (respect maxSessionsPerUser)
-  const sysConfig = await SystemConfig.getConfig();
-  const maxSessions = sysConfig.maxSessionsPerUser || 5;
-  user.refreshTokens.push(refreshToken);
-  if (user.refreshTokens.length > maxSessions) {
-    user.refreshTokens = user.refreshTokens.slice(-maxSessions);
-  }
-
-  // Track login
-  user.lastLoginAt = new Date();
-  user.lastLoginIp = req.ip || req.connection?.remoteAddress || null;
-  user.failedLoginAttempts = 0;
-  user.lockedUntil = null;
-
-  await user.save();
-
-  setRefreshCookie(res, refreshToken);
+  const { accessToken, formattedUser } = await issueSessionTokens(user, req, res);
 
   res.json({
     success: true,
     accessToken,
-    user: formatUser(user),
+    user: formattedUser,
   });
 });
 

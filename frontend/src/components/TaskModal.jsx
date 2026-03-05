@@ -104,8 +104,8 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editingTask }) => {
       }
       await onSubmit(data, editingTask?._id);
       onClose();
-    } catch (err) {
-      console.error(err);
+    } catch {
+      // Error handling is done by the caller (TaskProvider) which shows toasts
     } finally {
       setSubmitting(false);
     }
@@ -155,7 +155,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editingTask }) => {
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-500 dark:text-gray-500 dark:text-gray-400 mb-1">
+            <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
               Description
             </label>
             <textarea
@@ -168,7 +168,7 @@ const TaskModal = ({ isOpen, onClose, onSubmit, editingTask }) => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Priority */}
             <div>
               <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">

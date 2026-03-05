@@ -1,8 +1,10 @@
+const fs = require('fs');
 const Task = require('../models/Task');
 const TodoList = require('../models/TodoList');
 const SystemConfig = require('../models/SystemConfig');
 const { AppError } = require('../middlewares/errorHandler');
 const asyncHandler = require('../utils/asyncHandler');
+const { checkStorageQuota } = require('../services/storageService');
 
 /**
  * GET /api/tasks?listId=...&completed=...&tag=...
@@ -61,6 +63,18 @@ const createTask = asyncHandler(async (req, res) => {
     throw new AppError('File uploads are disabled by the administrator', 400);
   }
 
+  // Enforce per-user storage quota
+  if (req.file) {
+    const quota = await checkStorageQuota(req.user.id, req.file.size);
+    if (!quota.allowed) {
+      fs.unlink(req.file.path, () => {});
+      throw new AppError(
+        `Storage quota exceeded. Used: ${(quota.usedBytes / 1024 / 1024).toFixed(1)}MB / ${quota.limitMB}MB`,
+        400
+      );
+    }
+  }
+
   const taskData = {
     userId: req.user.id,
     listId,
@@ -75,6 +89,7 @@ const createTask = asyncHandler(async (req, res) => {
 
   if (req.file) {
     taskData.fileUrl = `/uploads/${req.file.filename}`;
+    taskData.fileSize = req.file.size || 0;
   }
 
   const task = await Task.create(taskData);
@@ -119,6 +134,7 @@ const updateTask = asyncHandler(async (req, res) => {
 
   if (req.file) {
     task.fileUrl = `/uploads/${req.file.filename}`;
+    task.fileSize = req.file.size || 0;
   }
 
   await task.save();

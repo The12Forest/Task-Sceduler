@@ -5,7 +5,7 @@ const cookieParser = require('cookie-parser');
 const path = require('path');
 
 const config = require('./config');
-const connectDB = require('./config/db');
+const { connectDB, initSystemConfig } = require('./services/dbInitService');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const { maintenanceGuard } = require('./middlewares/maintenance');
 const authRoutes = require('./routes/authRoutes');
@@ -14,7 +14,6 @@ const listRoutes = require('./routes/listRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const settingsRoutes = require('./routes/settingsRoutes');
 const User = require('./models/User');
-const SystemConfig = require('./models/SystemConfig');
 const { startReminderJob } = require('./jobs/reminderJob');
 const { startSelfDestructJob } = require('./jobs/selfDestructJob');
 
@@ -76,18 +75,6 @@ if (process.env.NODE_ENV === 'production') {
 // Error handling
 app.use(notFound);
 app.use(errorHandler);
-
-/**
- * Ensure SystemConfig singleton exists
- */
-const initSystemConfig = async () => {
-  try {
-    await SystemConfig.getConfig();
-    console.log('System configuration loaded.');
-  } catch (err) {
-    console.error('Failed to initialize system config:', err.message);
-  }
-};
 
 // ── Preflight: validate critical environment variables ──
 const preflight = () => {

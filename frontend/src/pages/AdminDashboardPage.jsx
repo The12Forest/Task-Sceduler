@@ -3,17 +3,30 @@ import { fetchAdminStats } from '../api/endpoints';
 import { useSidebarOpen } from '../App';
 import toast from 'react-hot-toast';
 
-const StatCard = ({ label, value, color, icon }) => (
-  <div className={`bg-dark-card border border-dark-border rounded-xl p-5 hover:border-${color}-600/40 transition-colors`}>
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm text-gray-400">{label}</p>
-        <p className={`text-3xl font-bold mt-1 text-${color}-400`}>{value}</p>
+const colorClasses = {
+  primary: { border: 'hover:border-primary-600/40', text: 'text-primary-400' },
+  green: { border: 'hover:border-green-600/40', text: 'text-green-400' },
+  blue: { border: 'hover:border-blue-600/40', text: 'text-blue-400' },
+  yellow: { border: 'hover:border-yellow-600/40', text: 'text-yellow-400' },
+  red: { border: 'hover:border-red-600/40', text: 'text-red-400' },
+  purple: { border: 'hover:border-purple-600/40', text: 'text-purple-400' },
+  cyan: { border: 'hover:border-cyan-600/40', text: 'text-cyan-400' },
+};
+
+const StatCard = ({ label, value, color, icon }) => {
+  const c = colorClasses[color] || colorClasses.primary;
+  return (
+    <div className={`bg-dark-card border border-dark-border rounded-xl p-5 ${c.border} transition-colors`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-gray-400">{label}</p>
+          <p className={`text-2xl sm:text-3xl font-bold mt-1 ${c.text}`}>{value}</p>
+        </div>
+        <div className={`${c.text} opacity-50`}>{icon}</div>
       </div>
-      <div className={`text-${color}-400 opacity-50`}>{icon}</div>
     </div>
-  </div>
-);
+  );
+};
 
 const AdminDashboardPage = () => {
   const openSidebar = useSidebarOpen();
@@ -56,7 +69,7 @@ const AdminDashboardPage = () => {
           </svg>
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Admin Dashboard</h1>
           <p className="text-gray-400 mt-1">System overview and statistics</p>
         </div>
       </div>

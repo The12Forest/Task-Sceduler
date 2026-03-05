@@ -68,28 +68,6 @@ const sendVerificationEmail = async (email, token) => {
 };
 
 /**
- * Send OTP code via email
- */
-const sendOtpEmail = async (email, otp) => {
-  const { transporter, from } = await getTransporter();
-
-  await transporter.sendMail({
-    from,
-    to: email,
-    subject: 'Your login verification code',
-    html: `
-      <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;padding:24px;background:#1a1a2e;color:#e0e0e0;border-radius:12px;">
-        <h2 style="color:#7c3aed;">Login Verification</h2>
-        <p>Your one-time verification code is:</p>
-        <div style="font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;padding:16px;background:#16213e;border-radius:8px;color:#7c3aed;">${otp}</div>
-        <p>This code expires in 5 minutes.</p>
-        <p style="font-size:12px;color:#888;">If you didn't request this, please ignore this email.</p>
-      </div>
-    `,
-  });
-};
-
-/**
  * Send task reminder email
  */
 const sendReminderEmail = async (email, tasks) => {
@@ -121,4 +99,4 @@ const sendReminderEmail = async (email, tasks) => {
   });
 };
 
-module.exports = { sendVerificationEmail, sendOtpEmail, sendReminderEmail };
+module.exports = { sendVerificationEmail, sendReminderEmail };

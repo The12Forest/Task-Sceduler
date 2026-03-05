@@ -64,6 +64,7 @@ const systemConfigSchema = new mongoose.Schema(
     allowedFileTypes: { type: [String], default: ['pdf', 'png', 'jpg', 'jpeg'] },
     maxTasksPerUser: { type: Number, default: 1000 },
     maxListsPerUser: { type: Number, default: 50 },
+    maxStoragePerUserMB: { type: Number, default: 50 },
     enableOverdueNotifications: { type: Boolean, default: true },
     reminderOffsetMinutes: { type: Number, default: 60 },
 

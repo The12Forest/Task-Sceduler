@@ -32,7 +32,7 @@ const AdminAuditLogPage = () => {
       if (category !== 'all') params.category = category;
       const res = await fetchAuditLogs(params);
       setLogs(res.data.logs);
-      setTotal(res.data.total);
+      setTotal(res.data.pagination?.total ?? 0);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to load audit logs');
     } finally {
@@ -57,7 +57,7 @@ const AdminAuditLogPage = () => {
           </svg>
         </button>
         <div>
-          <h1 className="text-3xl font-bold text-white">Audit Log</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Audit Log</h1>
           <p className="text-gray-400 mt-1">{total} entries</p>
         </div>
       </div>
